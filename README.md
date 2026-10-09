@@ -290,7 +290,7 @@ Preview/                README 界面预览图
 
 ## 📄 License
 
-请根据项目实际采用的开源协议补充许可证文件及此处说明。
+RackSentinel is licensed under the MIT License.
 
 ---
 
