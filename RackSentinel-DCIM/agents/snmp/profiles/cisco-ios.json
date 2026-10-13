@@ -1,0 +1,24 @@
+{
+  "id": "cisco-ios",
+  "name": "Cisco IOS / NX-OS (CPM CPU)",
+  "vendor": "Cisco",
+  "description": "CISCO-PROCESS-MIB cpmCPUTotal5minRev — 索引因平台而异",
+  "needs_verification": true,
+  "sys_object_id_prefixes": ["1.3.6.1.4.1.9.1."],
+  "metrics": [
+    {
+      "key": "cpu",
+      "oid": "1.3.6.1.4.1.9.9.109.1.1.1.1.5.1",
+      "scale": 1
+    }
+  ],
+  "alerts": [
+    {
+      "key": "cpu",
+      "oid": "1.3.6.1.4.1.9.9.109.1.1.1.1.5.1",
+      "hi": 85,
+      "level": "warning",
+      "title": "Cisco CPU 5 分钟均值偏高"
+    }
+  ]
+}

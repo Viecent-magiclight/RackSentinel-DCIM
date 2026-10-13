@@ -106,6 +106,19 @@ CREATE TABLE devices (
   owner      VARCHAR(60)  DEFAULT NULL COMMENT '责任人/业务归属',
   status     VARCHAR(16)  NOT NULL DEFAULT 'online',
   power_w    INT          NOT NULL DEFAULT 0,
+  monitor_mode VARCHAR(16) NOT NULL DEFAULT 'none',
+  last_heartbeat_at DATETIME DEFAULT NULL,
+  snmp_enabled TINYINT NOT NULL DEFAULT 0,
+  snmp_version VARCHAR(8) NOT NULL DEFAULT '2c',
+  snmp_host VARCHAR(128) DEFAULT NULL,
+  snmp_port INT NOT NULL DEFAULT 161,
+  snmp_community VARCHAR(128) DEFAULT NULL,
+  snmp_v3_user VARCHAR(64) DEFAULT NULL,
+  snmp_v3_auth_proto VARCHAR(16) DEFAULT 'SHA',
+  snmp_v3_auth_pass VARCHAR(128) DEFAULT NULL,
+  snmp_v3_priv_proto VARCHAR(16) DEFAULT 'AES',
+  snmp_v3_priv_pass VARCHAR(128) DEFAULT NULL,
+  snmp_profile VARCHAR(64) DEFAULT NULL,
   note       VARCHAR(255) DEFAULT NULL,
   created_at TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_devices_rack FOREIGN KEY (rack_id) REFERENCES racks(id) ON DELETE CASCADE,
@@ -158,4 +171,50 @@ CREATE TABLE sensors (
   status  VARCHAR(16) DEFAULT 'normal',
   CONSTRAINT fk_sensors_room FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE,
   INDEX idx_sensors_room (room_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE monitor_agents (
+  id           INT AUTO_INCREMENT PRIMARY KEY,
+  name         VARCHAR(80) NOT NULL,
+  kind         VARCHAR(24) NOT NULL DEFAULT 'host',
+  device_id    INT DEFAULT NULL,
+  token_hash   CHAR(64) NOT NULL,
+  token_prefix VARCHAR(12) NOT NULL DEFAULT '',
+  scopes_json  TEXT,
+  enabled      TINYINT NOT NULL DEFAULT 1,
+  last_seen_at DATETIME DEFAULT NULL,
+  last_ip      VARCHAR(45) DEFAULT NULL,
+  meta_json    TEXT,
+  created_at   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_agent_token (token_hash),
+  INDEX idx_agent_device (device_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE ingest_rate (
+  id       INT AUTO_INCREMENT PRIMARY KEY,
+  agent_id INT NOT NULL,
+  bucket   VARCHAR(20) NOT NULL,
+  count    INT NOT NULL DEFAULT 0,
+  UNIQUE KEY uk_rate (agent_id, bucket)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE notification_recipients (
+  id         INT AUTO_INCREMENT PRIMARY KEY,
+  name       VARCHAR(60) NOT NULL,
+  phone      VARCHAR(20) DEFAULT NULL,
+  sms_phone  VARCHAR(20) DEFAULT NULL,
+  min_level  VARCHAR(16) NOT NULL DEFAULT 'warning',
+  enabled    TINYINT NOT NULL DEFAULT 1,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE notification_log (
+  id          INT AUTO_INCREMENT PRIMARY KEY,
+  alert_id    INT DEFAULT NULL,
+  channel     VARCHAR(16) NOT NULL,
+  recipient   VARCHAR(40) NOT NULL,
+  status      VARCHAR(16) NOT NULL DEFAULT 'sent',
+  detail      TEXT,
+  created_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_nlog_alert (alert_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

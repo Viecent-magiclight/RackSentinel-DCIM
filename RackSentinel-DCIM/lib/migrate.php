@@ -52,6 +52,99 @@ function pending_tables(): array
                at       TEXT NOT NULL
              )",
         ],
+        [
+            'monitor_agents',
+            "CREATE TABLE monitor_agents (
+               id           INT AUTO_INCREMENT PRIMARY KEY,
+               name         VARCHAR(80) NOT NULL,
+               kind         VARCHAR(24) NOT NULL DEFAULT 'host',
+               device_id    INT DEFAULT NULL,
+               token_hash   CHAR(64) NOT NULL,
+               token_prefix VARCHAR(12) NOT NULL DEFAULT '',
+               scopes_json  TEXT,
+               enabled      TINYINT NOT NULL DEFAULT 1,
+               last_seen_at DATETIME DEFAULT NULL,
+               last_ip      VARCHAR(45) DEFAULT NULL,
+               meta_json    TEXT,
+               created_at   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+               UNIQUE KEY uk_agent_token (token_hash),
+               INDEX idx_agent_device (device_id)
+             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+            "CREATE TABLE monitor_agents (
+               id           INTEGER PRIMARY KEY AUTOINCREMENT,
+               name         TEXT NOT NULL,
+               kind         TEXT NOT NULL DEFAULT 'host',
+               device_id    INTEGER,
+               token_hash   TEXT NOT NULL UNIQUE,
+               token_prefix TEXT NOT NULL DEFAULT '',
+               scopes_json  TEXT,
+               enabled      INTEGER NOT NULL DEFAULT 1,
+               last_seen_at TEXT,
+               last_ip      TEXT,
+               meta_json    TEXT,
+               created_at   TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+             )",
+        ],
+        [
+            'ingest_rate',
+            "CREATE TABLE ingest_rate (
+               id       INT AUTO_INCREMENT PRIMARY KEY,
+               agent_id INT NOT NULL,
+               bucket   VARCHAR(20) NOT NULL,
+               count    INT NOT NULL DEFAULT 0,
+               UNIQUE KEY uk_rate (agent_id, bucket)
+             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+            "CREATE TABLE ingest_rate (
+               id       INTEGER PRIMARY KEY AUTOINCREMENT,
+               agent_id INTEGER NOT NULL,
+               bucket   TEXT NOT NULL,
+               count    INTEGER NOT NULL DEFAULT 0,
+               UNIQUE(agent_id, bucket)
+             )",
+        ],
+        [
+            'notification_recipients',
+            "CREATE TABLE notification_recipients (
+               id         INT AUTO_INCREMENT PRIMARY KEY,
+               name       VARCHAR(60) NOT NULL,
+               phone      VARCHAR(20) DEFAULT NULL,
+               sms_phone  VARCHAR(20) DEFAULT NULL,
+               min_level  VARCHAR(16) NOT NULL DEFAULT 'warning',
+               enabled    TINYINT NOT NULL DEFAULT 1,
+               created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+            "CREATE TABLE notification_recipients (
+               id         INTEGER PRIMARY KEY AUTOINCREMENT,
+               name       TEXT NOT NULL,
+               phone      TEXT,
+               sms_phone  TEXT,
+               min_level  TEXT NOT NULL DEFAULT 'warning',
+               enabled    INTEGER NOT NULL DEFAULT 1,
+               created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+             )",
+        ],
+        [
+            'notification_log',
+            "CREATE TABLE notification_log (
+               id          INT AUTO_INCREMENT PRIMARY KEY,
+               alert_id    INT DEFAULT NULL,
+               channel     VARCHAR(16) NOT NULL,
+               recipient   VARCHAR(40) NOT NULL,
+               status      VARCHAR(16) NOT NULL DEFAULT 'sent',
+               detail      TEXT,
+               created_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+               INDEX idx_nlog_alert (alert_id)
+             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+            "CREATE TABLE notification_log (
+               id          INTEGER PRIMARY KEY AUTOINCREMENT,
+               alert_id    INTEGER,
+               channel     TEXT NOT NULL,
+               recipient   TEXT NOT NULL,
+               status      TEXT NOT NULL DEFAULT 'sent',
+               detail      TEXT,
+               created_at  TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+             )",
+        ],
     ];
 }
 
@@ -60,6 +153,19 @@ function pending_columns(): array
 {
     return [
         ['walls', 'curve', "INT NOT NULL DEFAULT 0 COMMENT '弧高(cm)，0 为直墙'", 'INTEGER NOT NULL DEFAULT 0'],
+        ['devices', 'monitor_mode', "VARCHAR(16) NOT NULL DEFAULT 'none'", "TEXT NOT NULL DEFAULT 'none'"],
+        ['devices', 'last_heartbeat_at', 'DATETIME DEFAULT NULL', 'TEXT'],
+        ['devices', 'snmp_enabled', 'TINYINT NOT NULL DEFAULT 0', 'INTEGER NOT NULL DEFAULT 0'],
+        ['devices', 'snmp_version', "VARCHAR(8) NOT NULL DEFAULT '2c'", "TEXT NOT NULL DEFAULT '2c'"],
+        ['devices', 'snmp_host', 'VARCHAR(128) DEFAULT NULL', 'TEXT'],
+        ['devices', 'snmp_port', 'INT NOT NULL DEFAULT 161', 'INTEGER NOT NULL DEFAULT 161'],
+        ['devices', 'snmp_community', 'VARCHAR(128) DEFAULT NULL', 'TEXT'],
+        ['devices', 'snmp_v3_user', 'VARCHAR(64) DEFAULT NULL', 'TEXT'],
+        ['devices', 'snmp_v3_auth_proto', "VARCHAR(16) DEFAULT 'SHA'", "TEXT DEFAULT 'SHA'"],
+        ['devices', 'snmp_v3_auth_pass', 'VARCHAR(128) DEFAULT NULL', 'TEXT'],
+        ['devices', 'snmp_v3_priv_proto', "VARCHAR(16) DEFAULT 'AES'", "TEXT DEFAULT 'AES'"],
+        ['devices', 'snmp_v3_priv_pass', 'VARCHAR(128) DEFAULT NULL', 'TEXT'],
+        ['devices', 'snmp_profile', 'VARCHAR(64) DEFAULT NULL', 'TEXT'],
     ];
 }
 
