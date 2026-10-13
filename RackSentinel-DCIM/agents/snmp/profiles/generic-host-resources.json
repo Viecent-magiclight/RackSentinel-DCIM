@@ -5,6 +5,7 @@
   "description": "hrProcessorLoad 首索引；多 CPU 设备需在现场核对索引",
   "needs_verification": true,
   "sys_object_id_prefixes": [],
+  "features": ["host_resources", "if_mib", "multi_cpu"],
   "metrics": [
     { "key": "cpu", "oid": "1.3.6.1.2.1.25.3.3.1.2.1", "scale": 1 }
   ],

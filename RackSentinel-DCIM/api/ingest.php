@@ -10,6 +10,7 @@ require __DIR__ . '/../lib/catalog.php';
 require __DIR__ . '/../lib/helpers.php';
 require __DIR__ . '/../lib/settings.php';
 require __DIR__ . '/../lib/ingest.php';
+require __DIR__ . '/../lib/ingest_snmp.php';
 
 if (!db_installed()) {
     json_out(['error' => '系统尚未安装'], 503);
@@ -133,6 +134,7 @@ try {
             if (is_array($metrics) && $metrics) {
                 ingest_record_metrics($deviceId, $metrics, true);
             }
+            $profileDetected = (string) arr_get($in, 'profile_id', '');
             if ($sys = arr_get($in, 'sys')) {
                 $up = [];
                 if ($v = arr_get($sys, 'sysName')) {
@@ -144,7 +146,10 @@ try {
                 if ($up) {
                     update_row('devices', $deviceId, $up);
                 }
+                ingest_save_snmp_meta($deviceId, $sys, $profileDetected ?: null);
             }
+            ingest_save_interfaces($deviceId, (array) arr_get($in, 'interfaces', []));
+            ingest_save_sensors($deviceId, (array) arr_get($in, 'sensors', []));
             update_row('devices', $deviceId, ['last_heartbeat_at' => now_str()]);
             foreach ((array) arr_get($in, 'alerts', []) as $a) {
                 if (!is_array($a)) {
@@ -187,7 +192,7 @@ try {
         case 'notify.recipients': {
             ingest_require_agent(['alert:read']);
             json_out(['recipients' => fetch_all(
-                'SELECT id, name, phone, sms_phone, min_level, enabled FROM notification_recipients WHERE enabled = 1'
+                'SELECT id, name, phone, sms_phone, min_level, enabled, escalate_min FROM notification_recipients WHERE enabled = 1'
             )]);
         }
 

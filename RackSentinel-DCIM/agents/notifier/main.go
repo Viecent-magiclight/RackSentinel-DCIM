@@ -4,34 +4,39 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io"
-	"net/http"
 	"os"
 	"time"
 )
 
 type Config struct {
-	ServerURL       string `json:"server_url"`
-	Token           string `json:"token"`
-	Interval        int    `json:"interval_sec"`
-	SecretID        string `json:"secret_id"`
-	SecretKey       string `json:"secret_key"`
-	SmsSdkAppID     string `json:"sms_sdk_app_id"`
-	SmsSign         string `json:"sms_sign"`
-	SmsTemplateID   string `json:"sms_template_id"`
-	VmsSdkAppID     string `json:"vms_sdk_app_id"`
-	VmsTemplateID   string `json:"vms_template_id"`
-	DedupeSec       int    `json:"dedupe_sec"`
+	ServerURL     string `json:"server_url"`
+	Token         string `json:"token"`
+	Interval      int    `json:"interval_sec"`
+	SecretID      string `json:"secret_id"`
+	SecretKey     string `json:"secret_key"`
+	SmsSdkAppID   string `json:"sms_sdk_app_id"`
+	SmsSign       string `json:"sms_sign"`
+	SmsTemplateID string `json:"sms_template_id"`
+	VmsSdkAppID   string `json:"vms_sdk_app_id"`
+	VmsTemplateID string `json:"vms_template_id"`
+	DedupeSec     int    `json:"dedupe_sec"`
+	RatePerHour   int    `json:"rate_per_hour"`
+	VoiceMode     string `json:"voice_mode"`
 }
 
 type alertRow struct {
-	ID          int    `json:"id"`
-	Level       string `json:"level"`
-	Title       string `json:"title"`
-	Detail      string `json:"detail"`
-	DeviceName  string `json:"device_name"`
-	RackName    string `json:"rack_name"`
-	CreatedAt   string `json:"created_at"`
+	ID         int    `json:"id"`
+	Level      string `json:"level"`
+	Title      string `json:"title"`
+	DeviceName string `json:"device_name"`
+	CreatedAt  string `json:"created_at"`
+}
+
+type recipient struct {
+	Phone       string `json:"phone"`
+	SmsPhone    string `json:"sms_phone"`
+	MinLevel    string `json:"min_level"`
+	EscalateMin int    `json:"escalate_min"`
 }
 
 func loadConfig(path string) (Config, error) {
@@ -55,69 +60,15 @@ func loadConfig(path string) (Config, error) {
 	if c.DedupeSec <= 0 {
 		c.DedupeSec = 600
 	}
+	if c.RatePerHour <= 0 {
+		c.RatePerHour = 30
+	}
 	return c, nil
-}
-
-type recipient struct {
-	Name     string `json:"name"`
-	Phone    string `json:"phone"`
-	SmsPhone string `json:"sms_phone"`
-	MinLevel string `json:"min_level"`
-}
-
-func fetchRecipients(cfg Config) ([]recipient, error) {
-	req, _ := http.NewRequest(http.MethodGet, cfg.ServerURL+"?r=notify.recipients", nil)
-	req.Header.Set("Authorization", "Bearer "+cfg.Token)
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	raw, _ := io.ReadAll(resp.Body)
-	var out struct {
-		Recipients []recipient `json:"recipients"`
-	}
-	if err := json.Unmarshal(raw, &out); err != nil {
-		return nil, err
-	}
-	return out.Recipients, nil
-}
-
-func fetchAlerts(cfg Config) ([]alertRow, error) {
-	since := time.Now().Add(-24 * time.Hour).Format("2006-01-02 15:04:05")
-	body := map[string]interface{}{"since": since}
-	b, _ := json.Marshal(body)
-	req, _ := http.NewRequest(http.MethodPost, cfg.ServerURL+"?r=alerts.pending", bytesReader(b))
-	req.Header.Set("Authorization", "Bearer "+cfg.Token)
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	raw, _ := io.ReadAll(resp.Body)
-	var out struct {
-		Alerts []alertRow `json:"alerts"`
-	}
-	if err := json.Unmarshal(raw, &out); err != nil {
-		return nil, err
-	}
-	return out.Alerts, nil
-}
-
-func bytesReader(b []byte) *reader { return &reader{b: b} }
-
-type reader struct{ b []byte; i int }
-func (r *reader) Read(p []byte) (int, error) {
-	if r.i >= len(r.b) { return 0, io.EOF }
-	n := copy(p, r.b[r.i:])
-	r.i += n
-	return n, nil
 }
 
 func main() {
 	cfgPath := flag.String("config", "config.json", "config")
-	test := flag.Bool("test", false, "send test SMS/VMS to TEST_PHONE env")
+	test := flag.Bool("test", false, "test send to TEST_PHONE")
 	flag.Parse()
 	cfg, err := loadConfig(*cfgPath)
 	if err != nil {
@@ -126,55 +77,64 @@ func main() {
 	}
 	if *test {
 		phone := os.Getenv("TEST_PHONE")
-		if phone == "" || cfg.SecretID == "" || cfg.SecretKey == "" {
-			fmt.Fprintln(os.Stderr, "need TEST_PHONE and Tencent credentials")
+		if phone == "" {
+			fmt.Fprintln(os.Stderr, "TEST_PHONE required")
 			os.Exit(1)
 		}
-		msg := []string{"RackSentinel", "测试告警", time.Now().Format("15:04")}
-		if cfg.SmsTemplateID != "" {
-			_ = sendSMS(cfg.SecretID, cfg.SecretKey, cfg.SmsSdkAppID, cfg.SmsSign, cfg.SmsTemplateID, phone, msg)
-		}
-		if cfg.VmsTemplateID != "" {
-			_ = sendVMS(cfg.SecretID, cfg.SecretKey, cfg.VmsSdkAppID, cfg.VmsTemplateID, phone, msg)
-		}
-		fmt.Println("test dispatch attempted")
+		params := []string{"RackSentinel", "测试", time.Now().Format("H:i")}
+		runDispatch(cfg, nil, phone, params)
 		return
 	}
-
-	seen := map[string]time.Time{}
+	sent := map[string]time.Time{}
+	hourStart := time.Now()
+	hourCount := 0
 	for {
-		alerts, err := fetchAlerts(cfg)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			time.Sleep(time.Duration(cfg.Interval) * time.Second)
-			continue
+		if time.Since(hourStart) > time.Hour {
+			hourStart = time.Now()
+			hourCount = 0
 		}
-		rcpts, _ := fetchRecipients(cfg)
+		alerts, rcpts := fetchPending(cfg)
+		now := time.Now()
 		for _, a := range alerts {
 			key := fmt.Sprintf("%d:%s", a.ID, a.Title)
-			if t, ok := seen[key]; ok && time.Since(t) < time.Duration(cfg.DedupeSec)*time.Second {
-				continue
-			}
-			seen[key] = time.Now()
-			params := []string{a.Title, a.DeviceName, a.Level}
-			if cfg.SecretID == "" || cfg.SecretKey == "" {
+			if t, ok := sent[key]; ok && now.Sub(t) < time.Duration(cfg.DedupeSec)*time.Second {
 				continue
 			}
 			for _, r := range rcpts {
+				if !levelAllowed(a.Level, r.MinLevel) {
+					continue
+				}
+				if r.EscalateMin > 0 && a.CreatedAt != "" {
+					// escalation: only notify after N minutes since alert creation
+					if t, err := time.Parse("2006-01-02 15:04:05", a.CreatedAt); err == nil {
+						if now.Sub(t) < time.Duration(r.EscalateMin)*time.Minute {
+							continue
+						}
+					}
+				}
+				if hourCount >= cfg.RatePerHour {
+					break
+				}
+				params := []string{a.Title, a.DeviceName, a.Level}
 				phone := r.Phone
-				sms := r.SmsPhone
-				if phone != "" && cfg.VmsTemplateID != "" {
-					if err := sendVMS(cfg.SecretID, cfg.SecretKey, cfg.VmsSdkAppID, cfg.VmsTemplateID, phone, params); err != nil {
-						fmt.Fprintln(os.Stderr, "vms:", err)
-					}
+				if phone == "" {
+					phone = r.SmsPhone
 				}
-				if sms != "" && cfg.SmsTemplateID != "" {
-					if err := sendSMS(cfg.SecretID, cfg.SecretKey, cfg.SmsSdkAppID, cfg.SmsSign, cfg.SmsTemplateID, sms, params); err != nil {
-						fmt.Fprintln(os.Stderr, "sms:", err)
-					}
+				if phone == "" {
+					continue
 				}
+				runDispatch(cfg, &a, phone, params)
+				if r.SmsPhone != "" && r.SmsPhone != phone {
+					runDispatch(cfg, nil, r.SmsPhone, params)
+				}
+				hourCount++
 			}
+			sent[key] = now
 		}
 		time.Sleep(time.Duration(cfg.Interval) * time.Second)
 	}
+}
+
+func fetchPending(cfg Config) ([]alertRow, []recipient) {
+	return fetchAlerts(cfg), fetchRecipients(cfg)
 }

@@ -124,6 +124,115 @@ function pending_tables(): array
              )",
         ],
         [
+            'device_snmp_meta',
+            "CREATE TABLE device_snmp_meta (
+               device_id     INT PRIMARY KEY,
+               sys_object_id VARCHAR(128) DEFAULT NULL,
+               sys_name      VARCHAR(128) DEFAULT NULL,
+               sys_descr     VARCHAR(512) DEFAULT NULL,
+               profile_id    VARCHAR(64) DEFAULT NULL,
+               last_poll_at  DATETIME DEFAULT NULL,
+               CONSTRAINT fk_snmpmeta_dev FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE CASCADE
+             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+            "CREATE TABLE device_snmp_meta (
+               device_id     INTEGER PRIMARY KEY,
+               sys_object_id TEXT,
+               sys_name      TEXT,
+               sys_descr     TEXT,
+               profile_id    TEXT,
+               last_poll_at  TEXT
+             )",
+        ],
+        [
+            'device_interfaces',
+            "CREATE TABLE device_interfaces (
+               id            INT AUTO_INCREMENT PRIMARY KEY,
+               device_id     INT NOT NULL,
+               if_index      INT NOT NULL,
+               name          VARCHAR(128) NOT NULL DEFAULT '',
+               alias         VARCHAR(128) DEFAULT '',
+               admin_status  VARCHAR(16) DEFAULT '',
+               oper_status   VARCHAR(16) DEFAULT '',
+               speed_mbps    INT DEFAULT 0,
+               in_octets     VARCHAR(24) DEFAULT '0',
+               out_octets    VARCHAR(24) DEFAULT '0',
+               in_errors     INT DEFAULT 0,
+               out_errors    INT DEFAULT 0,
+               in_rate_mbps  DECIMAL(12,3) DEFAULT 0,
+               out_rate_mbps DECIMAL(12,3) DEFAULT 0,
+               recorded_at   DATETIME NOT NULL,
+               UNIQUE KEY uk_if (device_id, if_index),
+               INDEX idx_if_dev (device_id)
+             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+            "CREATE TABLE device_interfaces (
+               id            INTEGER PRIMARY KEY AUTOINCREMENT,
+               device_id     INTEGER NOT NULL,
+               if_index      INTEGER NOT NULL,
+               name          TEXT NOT NULL DEFAULT '',
+               alias         TEXT DEFAULT '',
+               admin_status  TEXT DEFAULT '',
+               oper_status   TEXT DEFAULT '',
+               speed_mbps    INTEGER DEFAULT 0,
+               in_octets     TEXT DEFAULT '0',
+               out_octets    TEXT DEFAULT '0',
+               in_errors     INTEGER DEFAULT 0,
+               out_errors    INTEGER DEFAULT 0,
+               in_rate_mbps  REAL DEFAULT 0,
+               out_rate_mbps REAL DEFAULT 0,
+               recorded_at   TEXT NOT NULL,
+               UNIQUE(device_id, if_index)
+             )",
+        ],
+        [
+            'device_sensors',
+            "CREATE TABLE device_sensors (
+               id          INT AUTO_INCREMENT PRIMARY KEY,
+               device_id   INT NOT NULL,
+               sensor_key  VARCHAR(64) NOT NULL,
+               label       VARCHAR(128) NOT NULL DEFAULT '',
+               kind        VARCHAR(24) NOT NULL DEFAULT 'other',
+               value       DECIMAL(12,3) DEFAULT 0,
+               unit        VARCHAR(16) DEFAULT '',
+               status      VARCHAR(16) DEFAULT 'normal',
+               recorded_at DATETIME NOT NULL,
+               UNIQUE KEY uk_sensor (device_id, sensor_key),
+               INDEX idx_sens_dev (device_id)
+             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+            "CREATE TABLE device_sensors (
+               id          INTEGER PRIMARY KEY AUTOINCREMENT,
+               device_id   INTEGER NOT NULL,
+               sensor_key  TEXT NOT NULL,
+               label       TEXT NOT NULL DEFAULT '',
+               kind        TEXT NOT NULL DEFAULT 'other',
+               value       REAL DEFAULT 0,
+               unit        TEXT DEFAULT '',
+               status      TEXT DEFAULT 'normal',
+               recorded_at TEXT NOT NULL,
+               UNIQUE(device_id, sensor_key)
+             )",
+        ],
+        [
+            'notification_deliveries',
+            "CREATE TABLE notification_deliveries (
+               id         INT AUTO_INCREMENT PRIMARY KEY,
+               alert_id   INT NOT NULL,
+               channel    VARCHAR(16) NOT NULL,
+               recipient  VARCHAR(40) NOT NULL,
+               level      VARCHAR(16) DEFAULT 'warning',
+               sent_at    DATETIME NOT NULL,
+               INDEX idx_nd_alert (alert_id),
+               INDEX idx_nd_dedupe (alert_id, channel, recipient)
+             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+            "CREATE TABLE notification_deliveries (
+               id         INTEGER PRIMARY KEY AUTOINCREMENT,
+               alert_id   INTEGER NOT NULL,
+               channel    TEXT NOT NULL,
+               recipient  TEXT NOT NULL,
+               level      TEXT DEFAULT 'warning',
+               sent_at    TEXT NOT NULL
+             )",
+        ],
+        [
             'notification_log',
             "CREATE TABLE notification_log (
                id          INT AUTO_INCREMENT PRIMARY KEY,
@@ -166,6 +275,7 @@ function pending_columns(): array
         ['devices', 'snmp_v3_priv_proto', "VARCHAR(16) DEFAULT 'AES'", "TEXT DEFAULT 'AES'"],
         ['devices', 'snmp_v3_priv_pass', 'VARCHAR(128) DEFAULT NULL', 'TEXT'],
         ['devices', 'snmp_profile', 'VARCHAR(64) DEFAULT NULL', 'TEXT'],
+        ['notification_recipients', 'escalate_min', 'INT NOT NULL DEFAULT 15', 'INTEGER NOT NULL DEFAULT 15'],
     ];
 }
 

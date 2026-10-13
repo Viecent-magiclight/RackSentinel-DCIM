@@ -1,0 +1,17 @@
+{
+  "id": "h3c-switch",
+  "name": "H3C 交换机 (HH3C-ENTITY-EXT-MIB)",
+  "vendor": "H3C",
+  "description": "CPU/内存/温度/风扇/电源；索引 .1 需在型号上核对",
+  "needs_verification": true,
+  "sys_object_id_prefixes": ["1.3.6.1.4.1.25506."],
+  "features": ["if_mib", "multi_cpu", "entity_sensor"],
+  "metrics": [
+    { "key": "cpu", "oid": "1.3.6.1.4.1.25506.2.6.1.1.1.1.6.1", "scale": 1 },
+    { "key": "mem", "oid": "1.3.6.1.4.1.25506.2.6.1.1.1.1.7.1", "scale": 1 },
+    { "key": "temp", "oid": "1.3.6.1.4.1.25506.2.6.1.1.1.1.12.1", "scale": 1 }
+  ],
+  "alerts": [
+    { "key": "cpu", "oid": "1.3.6.1.4.1.25506.2.6.1.1.1.1.6.1", "hi": 85, "level": "warning", "title": "H3C CPU 偏高" }
+  ]
+}

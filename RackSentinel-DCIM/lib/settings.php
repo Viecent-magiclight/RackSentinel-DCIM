@@ -30,6 +30,8 @@ function setting_schema(): array
         'tencent_sms_template_id' => ['短信模板 ID', '', ''],
         'tencent_vms_app_id' => ['语音 SdkAppId', '', ''],
         'tencent_vms_template_id' => ['语音模板 ID', '', ''],
+        'notify_rate_per_hour' => ['每小时最大外呼次数', '30', '全局限流，防止风暴'],
+        'notify_voice_mode' => ['语音模式', 'tts', 'tts=SendTtsVoice，code=SendCodeVoice'],
     ];
 }
 

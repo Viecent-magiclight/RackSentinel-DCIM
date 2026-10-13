@@ -313,7 +313,31 @@ function deviceFields(d, uTotal, p) {
       </select></label>
     </div>
     <label class="fld"><span>Priv 密码</span><input type="password" id="${p}snmp_v3_priv_pass" value="${esc(d.snmp_v3_priv_pass || '')}" autocomplete="new-password"></label>
+    <div class="flex mt12" style="gap:8px">
+      <button type="button" class="btn sm" data-snmp-test>测试 SNMP 连接</button>
+      ${d.id ? `<a class="btn sm" href="device-monitor.php?id=${d.id}">监控详情</a>` : ''}
+    </div>
     <div class="hint" id="${p}hint"></div>`;
+}
+
+function bindSnmpTest(scope, prefix) {
+  const btn = $('[data-snmp-test]', scope);
+  if (!btn) return;
+  btn.onclick = async () => {
+    const payload = {
+      snmp_host: $('#' + prefix + 'snmp_host', scope)?.value,
+      snmp_port: $('#' + prefix + 'snmp_port', scope)?.value,
+      snmp_version: $('#' + prefix + 'snmp_version', scope)?.value,
+      snmp_community: $('#' + prefix + 'snmp_community', scope)?.value,
+      mgmt_ip: $('#' + prefix + 'mgmt_ip', scope)?.value,
+      ip: $('#' + prefix + 'ip', scope)?.value,
+    };
+    if (S.sel) payload.id = S.sel;
+    try {
+      const r = await api('device.snmp_test', { method: 'POST', body: payload });
+      toast(r.ok ? `探测成功 · ${r.profile_id || '自动'}` : (r.error || '失败'), r.ok ? 'ok' : 'err');
+    } catch (e) { toast(e.message, 'err'); }
+  };
 }
 
 /** 类型变化时联动：无操作系统的类型禁用系统下拉，并提示默认高度 */
@@ -367,6 +391,7 @@ function showDevice(id) {
   bindTypeSync(box, 'e_', () => {
     $('#e_u_size', box).value = META.types[$('#e_type_key', box).value].u;
   });
+  bindSnmpTest(box, 'e_');
 
   const btn = $('#dvSave', box);
   btn.onclick = async () => {
@@ -416,6 +441,7 @@ function openForm(dev, presetU = 0) {
       bindTypeSync(bodyEl, 'f_', () => {
         $('#f_u_size', bodyEl).value = META.types[$('#f_type_key', bodyEl).value].u;
       });
+      bindSnmpTest(bodyEl, 'f_');
     },
   });
 

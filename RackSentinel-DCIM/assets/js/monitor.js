@@ -86,6 +86,17 @@ $('#btnAddRcpt').onclick = async () => {
   loadRcpt();
 };
 
+$('#btnTestNotify')?.addEventListener('click', async () => {
+  const phone = prompt('测试号码 (+86...)');
+  if (!phone) return;
+  const channel = prompt('通道: both / sms / voice', 'both') || 'both';
+  try {
+    const r = await api('notify.test_send', { method: 'POST', body: { phone, channel } });
+    toast('已提交测试发送', 'ok');
+    console.log(r);
+  } catch (e) { toast(e.message, 'err'); }
+});
+
 loadAgents();
 loadRcpt();
 })();

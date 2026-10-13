@@ -7,6 +7,9 @@ require __DIR__ . '/../lib/catalog.php';
 require __DIR__ . '/../lib/helpers.php';
 require __DIR__ . '/../lib/auth.php';
 require __DIR__ . '/../lib/ingest.php';
+require __DIR__ . '/../lib/ingest_snmp.php';
+require __DIR__ . '/../lib/snmp_probe.php';
+require __DIR__ . '/../lib/tencent.php';
 
 if (!db_installed()) {
     json_out(['error' => '系统尚未安装，请先访问 install.php'], 503);
@@ -542,7 +545,7 @@ try {
 
         case 'notify.recipient.save': {
             $id = (int) arr_get($in, 'id', 0);
-            $data = pick($in, ['name', 'phone', 'sms_phone', 'min_level', 'enabled']);
+            $data = pick($in, ['name', 'phone', 'sms_phone', 'min_level', 'enabled', 'escalate_min']);
             $data['enabled'] = (int) ($data['enabled'] ?? 1) ? 1 : 0;
             if (trim((string) ($data['name'] ?? '')) === '') {
                 json_out(['error' => '请填写姓名'], 400);
@@ -559,8 +562,41 @@ try {
             q('DELETE FROM notification_recipients WHERE id = ?', [int_param('id')]);
             json_out(['ok' => true]);
 
-        case 'notify.test': {
-            json_out(['ok' => true, 'message' => '测试通知请运行 agents/notifier 并使用 --test 模式（需配置腾讯云凭证）']);
+        case 'notify.test_send': {
+            $phone = trim((string) arr_get($in, 'phone', ''));
+            $channel = (string) arr_get($in, 'channel', 'both');
+            if ($phone === '') {
+                json_out(['error' => '请填写测试号码'], 400);
+            }
+            $params = ['RackSentinel', '测试告警', date('H:i')];
+            $out = ['ok' => true, 'results' => []];
+            if ($channel === 'sms' || $channel === 'both') {
+                $out['results']['sms'] = tencent_send_test_sms($phone, $params);
+            }
+            if ($channel === 'voice' || $channel === 'both') {
+                $out['results']['voice'] = tencent_send_test_voice($phone, $params, setting('notify_voice_mode', 'tts'));
+            }
+            json_out($out);
+        }
+
+        case 'device.monitor': {
+            $id = int_param('id');
+            $d  = monitor_device_detail($id);
+            if (!$d) {
+                json_out(['error' => '设备不存在'], 404);
+            }
+            json_out($d);
+        }
+
+        case 'device.snmp_test': {
+            $id = int_param('id') ?: (int) arr_get($in, 'id', 0);
+            $d  = $id ? fetch_one('SELECT * FROM devices WHERE id = ?', [$id]) : pick($in, [
+                'snmp_host', 'snmp_port', 'snmp_version', 'snmp_community', 'mgmt_ip', 'ip',
+            ]);
+            if (!$d) {
+                json_out(['error' => '设备不存在'], 404);
+            }
+            json_out(snmp_probe_device($d));
         }
 
         /* ---------------- 告警 ---------------- */

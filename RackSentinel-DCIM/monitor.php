@@ -77,6 +77,7 @@ require __DIR__ . '/partials/head.php';
       </div>
       <label class="fld"><span>去重间隔 (秒)</span><input type="number" name="notify_dedupe_sec" value="<?= e(setting('notify_dedupe_sec', '600')) ?>"></label>
       <button class="btn primary" type="submit"><svg class="ico"><use href="#ico-ui-save"/></svg>保存通知配置</button>
+      <button class="btn" type="button" id="btnTestNotify">测试发送</button>
     </form>
 
     <div class="card-t" style="margin-top:18px"><h3>收件人</h3></div>

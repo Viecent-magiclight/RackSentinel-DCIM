@@ -1,0 +1,13 @@
+{
+  "id": "huawei-oceanstor",
+  "name": "Huawei OceanStor",
+  "vendor": "Huawei",
+  "description": "ISM-STORAGE-SVC-MIB 等",
+  "needs_verification": true,
+  "sys_object_id_prefixes": ["1.3.6.1.4.1.34774."],
+  "features": ["entity_sensor"],
+  "metrics": [
+    { "key": "cpu", "oid": "1.3.6.1.4.1.34774.4.1.1.1.1.1", "scale": 1 }
+  ],
+  "alerts": []
+}
