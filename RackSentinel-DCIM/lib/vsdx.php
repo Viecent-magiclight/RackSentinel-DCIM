@@ -52,6 +52,11 @@ function vsdx_racks_for_export(int $rackId): array
     ];
 }
 
+function vsdx_in(float $v): string
+{
+    return number_format($v, 4, '.', '');
+}
+
 function vsdx_rect_shape(
     int $id,
     float $pinX,
@@ -63,38 +68,66 @@ function vsdx_rect_shape(
     string $line,
     float $fontPt = 8
 ): string {
-    $locX = $w / 2;
-    $locY = $h / 2;
     $text = vsdx_xml($text);
     $fill = vsdx_xml($fill);
     $line = vsdx_xml($line);
+    $pinX = vsdx_in($pinX);
+    $pinY = vsdx_in($pinY);
+    $w    = vsdx_in($w);
+    $h    = vsdx_in($h);
     return <<<XML
-<Shape ID="{$id}" Type="Shape" LineStyle="3" FillStyle="3" TextStyle="3">
+<Shape ID="{$id}" Type="Shape" LineStyle="0" FillStyle="0" TextStyle="0">
   <Cell N="PinX" U="IN" V="{$pinX}"/>
   <Cell N="PinY" U="IN" V="{$pinY}"/>
   <Cell N="Width" U="IN" V="{$w}"/>
   <Cell N="Height" U="IN" V="{$h}"/>
-  <Cell N="LocPinX" U="IN" V="{$locX}"/>
-  <Cell N="LocPinY" U="IN" V="{$locY}"/>
+  <Cell N="LocPinX" F="Width*0.5"/>
+  <Cell N="LocPinY" F="Height*0.5"/>
   <Cell N="Angle" U="DEG" V="0"/>
+  <Cell N="FlipX" V="0"/>
+  <Cell N="FlipY" V="0"/>
+  <Cell N="ResizeMode" V="0"/>
+  <Cell N="FillPattern" V="1"/>
   <Cell N="FillForegnd" V="{$fill}"/>
+  <Cell N="FillBkgnd" V="#FFFFFF"/>
+  <Cell N="LinePattern" V="1"/>
   <Cell N="LineColor" V="{$line}"/>
-  <Cell N="LineWeight" U="PT" V="0.5"/>
+  <Cell N="LineWeight" U="PT" V="0.75"/>
+  <Cell N="TextDirection" V="0"/>
   <Cell N="VerticalAlign" V="1"/>
+  <Cell N="HorzAlign" V="1"/>
   <Cell N="TopMargin" U="PT" V="2"/>
   <Cell N="BottomMargin" U="PT" V="2"/>
   <Cell N="LeftMargin" U="PT" V="2"/>
   <Cell N="RightMargin" U="PT" V="2"/>
   <Cell N="Size" U="PT" V="{$fontPt}"/>
+  <Cell N="LangID" V="2052"/>
   <Text>{$text}</Text>
   <Section N="Geometry" IX="0">
     <Cell N="NoFill" V="0"/>
     <Cell N="NoLine" V="0"/>
-    <Row T="MoveTo" IX="1"><Cell N="X" V="0"/><Cell N="Y" V="0"/></Row>
-    <Row T="LineTo" IX="2"><Cell N="X" V="Width"/><Cell N="Y" V="0"/></Row>
-    <Row T="LineTo" IX="3"><Cell N="X" V="Width"/><Cell N="Y" V="Height"/></Row>
-    <Row T="LineTo" IX="4"><Cell N="X" V="0"/><Cell N="Y" V="Height"/></Row>
-    <Row T="LineTo" IX="5"><Cell N="X" V="0"/><Cell N="Y" V="0"/></Row>
+    <Cell N="NoShow" V="0"/>
+    <Cell N="NoSnap" V="0"/>
+    <Row T="RelMoveTo" IX="1">
+      <Cell N="X" F="Width*0"/>
+      <Cell N="Y" F="Height*0"/>
+    </Row>
+    <Row T="RelLineTo" IX="2">
+      <Cell N="X" F="Width*1"/>
+      <Cell N="Y" F="Height*0"/>
+    </Row>
+    <Row T="RelLineTo" IX="3">
+      <Cell N="X" F="Width*1"/>
+      <Cell N="Y" F="Height*1"/>
+    </Row>
+    <Row T="RelLineTo" IX="4">
+      <Cell N="X" F="Width*0"/>
+      <Cell N="Y" F="Height*1"/>
+    </Row>
+    <Row T="RelLineTo" IX="5">
+      <Cell N="X" F="Width*0"/>
+      <Cell N="Y" F="Height*0"/>
+    </Row>
   </Section>
 </Shape>
 XML;
@@ -103,21 +136,26 @@ XML;
 function vsdx_text_shape(int $id, float $pinX, float $pinY, float $w, float $h, string $text, float $fontPt = 11): string
 {
     $text = vsdx_xml($text);
-    $locX = $w / 2;
-    $locY = $h / 2;
+    $pinX = vsdx_in($pinX);
+    $pinY = vsdx_in($pinY);
+    $w    = vsdx_in($w);
+    $h    = vsdx_in($h);
     return <<<XML
-<Shape ID="{$id}" Type="Shape" LineStyle="3" FillStyle="3" TextStyle="3">
+<Shape ID="{$id}" Type="Shape" LineStyle="0" FillStyle="0" TextStyle="0">
   <Cell N="PinX" U="IN" V="{$pinX}"/>
   <Cell N="PinY" U="IN" V="{$pinY}"/>
   <Cell N="Width" U="IN" V="{$w}"/>
   <Cell N="Height" U="IN" V="{$h}"/>
-  <Cell N="LocPinX" U="IN" V="{$locX}"/>
-  <Cell N="LocPinY" U="IN" V="{$locY}"/>
+  <Cell N="LocPinX" F="Width*0.5"/>
+  <Cell N="LocPinY" F="Height*0.5"/>
   <Cell N="FillPattern" V="0"/>
   <Cell N="LinePattern" V="0"/>
-  <Cell N="CharColor" V="#EAF4FF"/>
+  <Cell N="TextDirection" V="0"/>
+  <Cell N="CharColor" V="#203040"/>
   <Cell N="Size" U="PT" V="{$fontPt}"/>
   <Cell N="VerticalAlign" V="1"/>
+  <Cell N="HorzAlign" V="1"/>
+  <Cell N="LangID" V="2052"/>
   <Text>{$text}</Text>
 </Shape>
 XML;
@@ -340,11 +378,6 @@ XML;
       <Cell N="LineStyle" V="0"/>
       <Cell N="FillStyle" V="0"/>
       <Cell N="TextStyle" V="0"/>
-    </StyleSheet>
-    <StyleSheet ID="3" NameU="Connector" IsCustomNameU="1" Name="Connector" IsCustomName="1">
-      <Cell N="LineStyle" V="3"/>
-      <Cell N="FillStyle" V="3"/>
-      <Cell N="TextStyle" V="3"/>
     </StyleSheet>
   </StyleSheets>
   <DocumentSheet NameU="TheDoc" IsCustomNameU="1">
