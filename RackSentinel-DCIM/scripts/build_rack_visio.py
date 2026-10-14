@@ -34,7 +34,30 @@ MARGIN_Y = 0.5
 HEADER_H = 0.35
 RACK_PAD = 0.08
 LINE_BLACK = "#000000"
-LINE_WEIGHT_PT = "0.35"
+LINE_WEIGHT_PT = 1.0  # points (thin; ~0.014 in)
+
+
+def _set_cell_pt(shape, name: str, value: float) -> None:
+    shape.set_cell_value(name, str(value))
+    cell = shape.cells.get(name)
+    if cell is not None:
+        cell.xml.set("U", "PT")
+
+
+def _set_loc_pin_center(shape) -> None:
+    """Template copies keep stale LocPin V values; formulas must win."""
+    for name, formula in (("LocPinX", "Width*0.5"), ("LocPinY", "Height*0.5")):
+        shape.set_cell_formula(name, formula)
+        cell = shape.cells.get(name)
+        if cell is not None and "V" in cell.xml.attrib:
+            del cell.xml.attrib["V"]
+
+
+def shape_bounds_y(shape) -> tuple[float, float, float]:
+    """Return (bottom, top, center) page Y in inches from PinY/Height."""
+    h = float(shape.height or 0)
+    cy = float(shape.y or 0)
+    return cy - h / 2, cy + h / 2, cy
 
 
 def load_from_sqlite(db_path: str, rack_id: int) -> dict:
@@ -106,7 +129,7 @@ def _style_outline(sh, font_pt: int = 8, with_text: bool = True) -> None:
     sh.set_cell_value("FillPattern", "0")
     sh.set_cell_value("LinePattern", "1")
     sh.set_cell_value("LineColor", LINE_BLACK)
-    sh.set_cell_value("LineWeight", LINE_WEIGHT_PT)
+    _set_cell_pt(sh, "LineWeight", LINE_WEIGHT_PT)
     sh.set_cell_value("Rounding", "0")
     sh.set_cell_value("TextDirection", "0")
     if with_text:
@@ -123,8 +146,7 @@ def add_box(proto, page, pin_x, pin_y, width, height, text="", font_pt=8):
     sh.y = pin_y
     sh.width = width
     sh.height = height
-    sh.set_cell_formula("LocPinX", "Width*0.5")
-    sh.set_cell_formula("LocPinY", "Height*0.5")
+    _set_loc_pin_center(sh)
     sh.text = text
     _style_outline(sh, font_pt, with_text=bool(text))
     return sh
@@ -136,8 +158,7 @@ def add_caption(proto, page, pin_x, pin_y, width, height, text, font_pt=11):
     sh.y = pin_y
     sh.width = width
     sh.height = height
-    sh.set_cell_formula("LocPinX", "Width*0.5")
-    sh.set_cell_formula("LocPinY", "Height*0.5")
+    _set_loc_pin_center(sh)
     sh.text = text
     sh.set_cell_value("FillPattern", "0")
     sh.set_cell_value("LinePattern", "0")
@@ -181,6 +202,7 @@ def build_vsdx(payload: dict, output_path: str) -> None:
         clear_page_shapes(page)
 
         top_y = page_h - MARGIN_Y
+        # Header band above racks; rack grid occupies [rack_base, rack_top]
         rack_top = top_y - HEADER_H
         rack_base = rack_top - grid_h
 
@@ -188,15 +210,20 @@ def build_vsdx(payload: dict, output_path: str) -> None:
             left = MARGIN_X + i * (RACK_W + RACK_GAP)
             cx = left + RACK_W / 2
             rack_code = rack.get("name") or f"R{i + 1}"
-            add_caption(proto, page, cx, rack_top - HEADER_H / 2, RACK_W, HEADER_H, rack_code, 12)
+            add_caption(
+                proto, page, cx, top_y - HEADER_H / 2, RACK_W, HEADER_H, rack_code, 12
+            )
 
-            add_box(proto, page, cx, rack_base + grid_h / 2, RACK_W, grid_h, text="", font_pt=6)
+            frame_pin_y = rack_base + grid_h / 2
+            add_box(proto, page, cx, frame_pin_y, RACK_W, grid_h, text="", font_pt=6)
 
             for d in rack.get("devices") or []:
                 u_start = int(d.get("u_start") or 1)
                 u_size = max(1, int(d.get("u_size") or 1))
-                h = u_size * U_H - 0.02
-                pin_y = rack_base + (u_start - 1) * U_H + h / 2
+                slot_h = u_size * U_H
+                h = max(slot_h - 0.01, 0.05)
+                # Center of U slot, bottom-up: U1 sits on rack_base
+                pin_y = rack_base + (u_start - 1) * U_H + slot_h / 2
                 w = RACK_W - RACK_PAD * 2
                 name = (d.get("name") or "").strip()
                 font = 5 if u_size <= 1 else (6 if u_size <= 2 else 7)
@@ -212,22 +239,58 @@ def build_vsdx(payload: dict, output_path: str) -> None:
         shutil.rmtree(work, ignore_errors=True)
 
 
-def verify(path: str) -> None:
+def verify(path: str, rack_code: str = "A01") -> None:
     vf = VisioFile(path)
     page = vf.pages[0]
     print(f"Page size: {page.width:.2f} x {page.height:.2f} in")
-    frames = [s for s in page.child_shapes if s.height and s.height > 5]
-    devices = [
+    frames = [s for s in page.child_shapes if s.height and s.height > 5 and not (s.text or "").strip()]
+    print(f"Shapes: {len(page.child_shapes)} (rack frames={len(frames)})")
+
+    cap = next((s for s in page.child_shapes if (s.text or "").strip() == rack_code), None)
+    if not cap:
+        vf.close_vsdx()
+        return
+    cx = float(cap.x)
+    frame = min(
+        (s for s in frames if abs(float(s.x) - cx) < 0.05),
+        key=lambda s: float(s.height),
+        default=None,
+    )
+    if not frame:
+        vf.close_vsdx()
+        return
+
+    fb, ft, _ = shape_bounds_y(frame)
+    print(f"\nVerify nesting ({rack_code}, center X={cx:.2f} in)")
+    print(f"{'shape':<22} {'bottom':>8} {'top':>8} {'height':>8}")
+    print(f"{'rack frame':<22} {fb:8.3f} {ft:8.3f} {float(frame.height):8.3f}")
+
+    devs = [
         s
         for s in page.child_shapes
-        if s.text and s.height and s.height < 2 and s.height > 0.05
+        if s.text
+        and (s.text or "").strip() != rack_code
+        and abs(float(s.x) - cx) < 0.08
+        and float(s.height or 0) < 2
     ]
-    print(f"Shapes: {len(page.child_shapes)} (frames={len(frames)}, devices~={len(devices)})")
-    for s in frames[:3]:
-        print(f"  frame Pin=({s.x:.2f},{s.y:.2f}) Size=({s.width:.2f}x{s.height:.2f})")
-    for s in devices[:3]:
-        t = (s.text or "").replace("\n", " | ")[:50]
-        print(f"  dev Pin=({s.x:.2f},{s.y:.2f}) Size=({s.width:.2f}x{s.height:.2f}) text={t}")
+    devs.sort(key=lambda s: shape_bounds_y(s)[0])
+
+    if devs:
+        u1 = devs[0]
+        b, t, _ = shape_bounds_y(u1)
+        print(
+            f"{'lowest device (U1?)':<22} {b:8.3f} {t:8.3f} {float(u1.height):8.3f}  {(u1.text or '').strip()}"
+        )
+        top_dev = max(devs, key=lambda s: shape_bounds_y(s)[1])
+        b, t, _ = shape_bounds_y(top_dev)
+        print(
+            f"{'highest device':<22} {b:8.3f} {t:8.3f} {float(top_dev.height):8.3f}  {(top_dev.text or '').strip()}"
+        )
+        ok_low = abs(b - fb) < 0.02 or shape_bounds_y(u1)[0] >= fb - 0.02
+        ok_high = t <= ft + 0.02
+        print(f"  U1 bottom ~= frame bottom: {ok_low} (delta {shape_bounds_y(u1)[0] - fb:+.3f} in)")
+        print(f"  top device <= frame top:   {ok_high} (delta {ft - shape_bounds_y(top_dev)[1]:+.3f} in)")
+
     vf.close_vsdx()
 
 
@@ -239,10 +302,11 @@ def main():
     ap.add_argument("--payload")
     ap.add_argument("--verify", action="store_true", help="print dimensions after build")
     ap.add_argument("--verify-only", action="store_true", help="only verify existing -o file")
+    ap.add_argument("--rack-code", default="A01", help="rack label for nesting verify")
     args = ap.parse_args()
 
     if args.verify_only:
-        verify(args.output)
+        verify(args.output, args.rack_code)
         return
 
     if args.payload:
@@ -255,7 +319,7 @@ def main():
 
     build_vsdx(payload, args.output)
     if args.verify:
-        verify(args.output)
+        verify(args.output, args.rack_code)
     print(args.output)
 
 
