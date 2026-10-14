@@ -16,6 +16,7 @@ if (!db_installed()) {
     header('Location: install.php');
     exit;
 }
+run_migrations();
 $ME = require_login();
 
 $PAGE  = $PAGE  ?? 'index';

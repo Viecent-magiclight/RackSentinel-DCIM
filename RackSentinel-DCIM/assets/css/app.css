@@ -2,28 +2,27 @@
    机房机柜资产与运维管理平台 —— 全局样式
    ========================================================================== */
 :root{
-  --bg:#040a14;
-  --bg-soft:#071523;
-  --panel:rgba(7,22,37,.78);
-  --panel-solid:#0a1c2e;
-  --line:rgba(0,229,255,.2);
-  --line-strong:rgba(0,229,255,.55);
-  --cyan:#00e5ff;
-  --green:#2ef2a3;
-  --amber:#ffb020;
-  --red:#ff4d6a;
-  --purple:#a06bff;
-  --grey:#5a7a8e;
-  --txt:#cfe9f5;
-  --txt-dim:#6f90a6;
-  --txt-mute:#44697e;
+  --bg:#0e1114;
+  --bg-soft:#151a1f;
+  --panel:rgba(21,26,31,.92);
+  --panel-solid:#1a2026;
+  --line:rgba(148,163,175,.22);
+  --line-strong:rgba(148,163,175,.45);
+  --cyan:#3d9a8b;
+  --green:#3d9a6a;
+  --amber:#c98a2e;
+  --red:#c44d5a;
+  --purple:#8a7a9a;
+  --grey:#6b7a86;
+  --txt:#d8dee4;
+  --txt-dim:#8b9aab;
+  --txt-mute:#5c6b78;
   --nav-h:52px;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%}
 body{
-  background:
-    radial-gradient(ellipse at 50% -10%, rgba(0,120,190,.18), transparent 60%),
+  background:linear-gradient(180deg, #12171c 0%, var(--bg) 48%),
     var(--bg);
   color:var(--txt);
   font-family:"Microsoft YaHei","PingFang SC","Hiragino Sans GB",sans-serif;
@@ -35,8 +34,8 @@ svg.ico,svg.ico-sm,svg.ico-lg{width:16px;height:16px;flex:none;display:inline-bl
 svg.ico-lg{width:22px;height:22px}
 svg.ico-sm{width:13px;height:13px}
 ::-webkit-scrollbar{width:7px;height:7px}
-::-webkit-scrollbar-thumb{background:rgba(0,229,255,.25);border-radius:4px}
-::-webkit-scrollbar-thumb:hover{background:rgba(0,229,255,.45)}
+::-webkit-scrollbar-thumb{background:rgba(148,163,175,.28);border-radius:4px}
+::-webkit-scrollbar-thumb:hover{background:rgba(148,163,175,.45)}
 ::-webkit-scrollbar-track{background:rgba(255,255,255,.02)}
 
 /* ---------------- 顶部导航 ---------------- */
@@ -53,7 +52,7 @@ svg.ico-sm{width:13px;height:13px}
   color:var(--txt-dim);transition:.16s;border:1px solid transparent;
 }
 .navlink:hover{color:#eafcff;background:rgba(0,229,255,.08)}
-.navlink.on{color:#04121c;background:var(--cyan);font-weight:600;box-shadow:0 0 16px rgba(0,229,255,.35)}
+.navlink.on{color:#0e1114;background:var(--cyan);font-weight:600;box-shadow:none}
 .navright{margin-left:auto;display:flex;align-items:center;gap:14px;color:var(--txt-dim)}
 .navright .clock{font-size:15px;color:#9fe8ff}
 
@@ -63,7 +62,7 @@ svg.ico-sm{width:13px;height:13px}
   padding:12px 14px 14px;backdrop-filter:blur(6px);
   clip-path:polygon(0 0,calc(100% - 14px) 0,100% 14px,100% 100%,14px 100%,0 calc(100% - 14px));
 }
-.card::before{content:"";position:absolute;left:0;top:0;width:3px;height:22px;background:var(--cyan);box-shadow:0 0 10px var(--cyan)}
+.card::before{content:"";position:absolute;left:0;top:0;width:3px;height:22px;background:var(--cyan);box-shadow:none}
 .card-t{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:11px}
 .card-t h3{font-size:14px;font-weight:600;letter-spacing:1.5px;color:#d9f4ff;padding-left:9px}
 .card-t .en{font-size:9px;color:#38637d;letter-spacing:1.5px}
@@ -452,6 +451,39 @@ body.bare{--nav-h:62px;overflow:hidden}
 /* ---------------- 设置页 ---------------- */
 .setwrap{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:14px;
   align-items:start;padding:16px;max-width:1080px;margin:0 auto}
+
+/* ---------------- 监控 / 告警（全宽流体布局） ---------------- */
+.page-wrap{
+  width:100%;max-width:none;margin:0;
+  padding:20px clamp(16px,2.5vw,32px) 28px;
+  box-sizing:border-box;
+}
+.monitor-grid{
+  display:grid;
+  grid-template-columns:minmax(260px,1fr) minmax(340px,1.35fr) minmax(280px,1fr);
+  gap:clamp(18px,2vw,26px);
+  align-items:start;
+}
+.monitor-grid .card{padding:16px 18px 20px}
+.monitor-grid .grid{font-size:12px}
+.monitor-grid .grid th,.monitor-grid .grid td{padding:8px 10px}
+.monitor-col-agents{min-width:0}
+.monitor-col-agents .grid{display:block;overflow-x:auto}
+.page-wrap--stack{display:flex;flex-direction:column;gap:clamp(16px,2vw,22px)}
+.monitor-detail-pair{
+  display:grid;grid-template-columns:1fr 1fr;gap:clamp(16px,2vw,22px);align-items:stretch;
+}
+.monitor-detail-pair .card{height:100%;min-height:200px}
+.page-wrap .card.table-card{padding:12px 16px 16px}
+.page-wrap .card.table-card .grid{width:100%}
+@media (max-width:1400px){
+  .monitor-grid{grid-template-columns:1fr 1fr}
+  .monitor-col-agents{grid-column:1/-1}
+}
+@media (max-width:880px){
+  .monitor-grid{grid-template-columns:1fr}
+  .monitor-detail-pair{grid-template-columns:1fr}
+}
 .setform .fld{margin-bottom:14px}
 .setform .fld em{display:block;font-style:normal;margin-top:4px}
 .setform input{height:34px}

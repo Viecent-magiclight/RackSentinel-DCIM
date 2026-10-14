@@ -114,6 +114,8 @@ function render_nav(string $active, ?array $me = null): void
         'racks'    => ['机柜 U 位', 'ui-rack'],
         'devices'  => ['设备清单', 'server'],
         'settings' => ['系统设置', 'ui-edit'],
+        'monitor'  => ['监控采集', 'ui-alert'],
+        'alerts'   => ['告警中心', 'ui-alert'],
     ];
     echo '<nav class="topnav"><div class="brand"><svg class="ico"><use href="#ico-ui-rack"/></svg><span>'
         . e(setting('app_name')) . '</span></div><div class="navlinks">';

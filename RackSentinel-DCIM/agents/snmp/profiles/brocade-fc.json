@@ -1,0 +1,14 @@
+{
+  "id": "brocade-fc",
+  "name": "Brocade / Broadcom SAN 交换机",
+  "vendor": "Brocade",
+  "description": "SW-MIB 传感器与 FC 端口状态；FCMGMT-MIB 流量 OID 需按固件核对",
+  "needs_verification": true,
+  "sys_object_id_prefixes": ["1.3.6.1.4.1.1588."],
+  "features": ["entity_sensor", "if_mib"],
+  "metrics": [
+    { "key": "temp", "oid": "1.3.6.1.4.1.1588.2.1.1.1.1.4.1", "scale": 1 },
+    { "key": "fc_port_up", "oid": "1.3.6.1.4.1.1588.3.3.1.2.1.2.1", "scale": 1 }
+  ],
+  "alerts": []
+}

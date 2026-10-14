@@ -6,6 +6,10 @@ require __DIR__ . '/../lib/db.php';
 require __DIR__ . '/../lib/catalog.php';
 require __DIR__ . '/../lib/helpers.php';
 require __DIR__ . '/../lib/auth.php';
+require __DIR__ . '/../lib/ingest.php';
+require __DIR__ . '/../lib/ingest_snmp.php';
+require __DIR__ . '/../lib/snmp_probe.php';
+require __DIR__ . '/../lib/tencent.php';
 
 if (!db_installed()) {
     json_out(['error' => '系统尚未安装，请先访问 install.php'], 503);
@@ -264,7 +268,13 @@ try {
             }
 
             $data = pick($in, ['name', 'hostname', 'ip', 'mgmt_ip', 'type_key', 'os_key',
-                               'vendor', 'model', 'serial', 'asset_tag', 'owner', 'status', 'power_w', 'note']);
+                               'vendor', 'model', 'serial', 'asset_tag', 'owner', 'status', 'power_w', 'note',
+                               'monitor_mode', 'snmp_enabled', 'snmp_version', 'snmp_host', 'snmp_port',
+                               'snmp_community', 'snmp_v3_user', 'snmp_v3_auth_proto', 'snmp_v3_auth_pass',
+                               'snmp_v3_priv_proto', 'snmp_v3_priv_pass', 'snmp_profile']);
+            if (isset($data['snmp_enabled'])) {
+                $data['snmp_enabled'] = (int) $data['snmp_enabled'] ? 1 : 0;
+            }
             $data['u_start'] = $uStart;
             $data['u_size']  = $uSize;
             $data['name']    = $data['name'] ?? '新设备';
@@ -387,7 +397,34 @@ try {
 
         /* ---------------- 实时指标推进 ---------------- */
         case 'metrics.tick': {
+            ingest_mark_stale_devices_offline();
             $roomId = int_param('room_id') ?: (int) fetch_val('SELECT id FROM rooms ORDER BY id LIMIT 1', [], 0);
+            if (!metrics_simulation_enabled()) {
+                $passive = passive_type_keys();
+                $rows = fetch_all(
+                    "SELECT d.id, d.status, d.power_w, d.type_key,
+                            m.cpu, m.mem, m.disk, m.temp, m.net_in, m.net_out, m.power, m.recorded_at
+                     FROM devices d
+                     JOIN racks r ON r.id = d.rack_id
+                     LEFT JOIN device_metrics m ON m.id = (SELECT id FROM device_metrics WHERE device_id = d.id ORDER BY id DESC LIMIT 1)
+                     WHERE r.room_id = ? AND d.type_key NOT IN (" . placeholders($passive) . ')',
+                    array_merge([$roomId], $passive)
+                );
+                $out = [];
+                foreach ($rows as $r) {
+                    $out[] = [
+                        'id' => (int) $r['id'],
+                        'cpu' => round((float) ($r['cpu'] ?? 0), 1),
+                        'mem' => round((float) ($r['mem'] ?? 0), 1),
+                        'disk' => round((float) ($r['disk'] ?? 0), 1),
+                        'temp' => round((float) ($r['temp'] ?? 0), 1),
+                        'net_in' => round((float) ($r['net_in'] ?? 0), 1),
+                        'net_out' => round((float) ($r['net_out'] ?? 0), 1),
+                        'power' => round((float) ($r['power'] ?? 0)),
+                    ];
+                }
+                json_out(['ts' => now_str(), 'persisted' => false, 'simulation' => false, 'metrics' => $out]);
+            }
             $passive = passive_type_keys();
             $rows = fetch_all(
                 "SELECT d.id, d.status, d.power_w, d.type_key,
@@ -441,7 +478,125 @@ try {
                 q('DELETE FROM device_metrics WHERE recorded_at < ?', [date('Y-m-d H:i:s', time() - 14400)]);
             }
 
-            json_out(['ts' => $now, 'persisted' => $persist, 'metrics' => $out]);
+            json_out(['ts' => $now, 'persisted' => $persist, 'simulation' => true, 'metrics' => $out]);
+        }
+
+        /* ---------------- 采集代理管理 ---------------- */
+        case 'agent.list':
+            json_out(fetch_all(
+                'SELECT a.id, a.name, a.kind, a.device_id, a.token_prefix, a.enabled, a.last_seen_at, a.last_ip, a.created_at,
+                        d.name AS device_name
+                 FROM monitor_agents a LEFT JOIN devices d ON d.id = a.device_id ORDER BY a.id DESC'
+            ));
+
+        case 'agent.create': {
+            $name = trim((string) arr_get($in, 'name', ''));
+            $kind = (string) arr_get($in, 'kind', 'host');
+            $deviceId = (int) arr_get($in, 'device_id', 0);
+            if ($name === '') {
+                json_out(['error' => '请填写代理名称'], 400);
+            }
+            if ($kind === 'host' && !$deviceId) {
+                json_out(['error' => '主机 Agent 必须绑定设备'], 400);
+            }
+            if ($deviceId && !fetch_one('SELECT id FROM devices WHERE id = ?', [$deviceId])) {
+                json_out(['error' => '设备不存在'], 404);
+            }
+            $plain = ingest_new_agent_token();
+            $scopes = ingest_agent_scopes_for_kind($kind, $deviceId);
+            $id = insert_row('monitor_agents', [
+                'name'         => $name,
+                'kind'         => $kind,
+                'device_id'    => $deviceId ?: null,
+                'token_hash'   => ingest_hash_token($plain),
+                'token_prefix' => ingest_token_prefix($plain),
+                'scopes_json'  => json_encode($scopes),
+                'enabled'      => 1,
+            ]);
+            if ($kind === 'host' && $deviceId) {
+                update_row('devices', $deviceId, ['monitor_mode' => 'agent']);
+            }
+            json_out(['ok' => true, 'id' => $id, 'token' => $plain, 'token_prefix' => ingest_token_prefix($plain)]);
+        }
+
+        case 'agent.toggle': {
+            $id = (int) arr_get($in, 'id', 0);
+            $en = (int) arr_get($in, 'enabled', 1) ? 1 : 0;
+            update_row('monitor_agents', $id, ['enabled' => $en]);
+            json_out(['ok' => true]);
+        }
+
+        case 'agent.delete': {
+            $id = (int) arr_get($in, 'id', 0);
+            $row = fetch_one('SELECT device_id, kind FROM monitor_agents WHERE id = ?', [$id]);
+            if ($row && $row['kind'] === 'host' && $row['device_id']) {
+                update_row('devices', (int) $row['device_id'], ['monitor_mode' => 'none']);
+            }
+            q('DELETE FROM monitor_agents WHERE id = ?', [$id]);
+            json_out(['ok' => true]);
+        }
+
+        case 'snmp.profiles':
+            json_out(snmp_profile_catalog());
+
+        /* ---------------- 通知收件人 ---------------- */
+        case 'notify.recipients':
+            json_out(fetch_all('SELECT id, name, phone, sms_phone, min_level, enabled, created_at FROM notification_recipients ORDER BY id'));
+
+        case 'notify.recipient.save': {
+            $id = (int) arr_get($in, 'id', 0);
+            $data = pick($in, ['name', 'phone', 'sms_phone', 'min_level', 'enabled', 'escalate_min']);
+            $data['enabled'] = (int) ($data['enabled'] ?? 1) ? 1 : 0;
+            if (trim((string) ($data['name'] ?? '')) === '') {
+                json_out(['error' => '请填写姓名'], 400);
+            }
+            if ($id) {
+                update_row('notification_recipients', $id, $data);
+            } else {
+                $id = insert_row('notification_recipients', $data);
+            }
+            json_out(['ok' => true, 'id' => $id]);
+        }
+
+        case 'notify.recipient.delete':
+            q('DELETE FROM notification_recipients WHERE id = ?', [int_param('id')]);
+            json_out(['ok' => true]);
+
+        case 'notify.test_send': {
+            $phone = trim((string) arr_get($in, 'phone', ''));
+            $channel = (string) arr_get($in, 'channel', 'both');
+            if ($phone === '') {
+                json_out(['error' => '请填写测试号码'], 400);
+            }
+            $params = ['RackSentinel', '测试告警', date('H:i')];
+            $out = ['ok' => true, 'results' => []];
+            if ($channel === 'sms' || $channel === 'both') {
+                $out['results']['sms'] = tencent_send_test_sms($phone, $params);
+            }
+            if ($channel === 'voice' || $channel === 'both') {
+                $out['results']['voice'] = tencent_send_test_voice($phone, $params, setting('notify_voice_mode', 'tts'));
+            }
+            json_out($out);
+        }
+
+        case 'device.monitor': {
+            $id = int_param('id');
+            $d  = monitor_device_detail($id);
+            if (!$d) {
+                json_out(['error' => '设备不存在'], 404);
+            }
+            json_out($d);
+        }
+
+        case 'device.snmp_test': {
+            $id = int_param('id') ?: (int) arr_get($in, 'id', 0);
+            $d  = $id ? fetch_one('SELECT * FROM devices WHERE id = ?', [$id]) : pick($in, [
+                'snmp_host', 'snmp_port', 'snmp_version', 'snmp_community', 'mgmt_ip', 'ip',
+            ]);
+            if (!$d) {
+                json_out(['error' => '设备不存在'], 404);
+            }
+            json_out(snmp_probe_device($d));
         }
 
         /* ---------------- 告警 ---------------- */

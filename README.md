@@ -30,9 +30,9 @@
 
 项目采用 **纯 PHP + PDO + 原生 JavaScript** 构建，无需 Composer、无需前端构建工具；支持 MySQL 与 SQLite，适合本地体验、私有化部署及二次开发。
 
-> **当前版本：`v0.1`**
+> **当前版本：`v0.2`（监控采集预览）**
 >
-> 当前版本已实现主要后台界面与数据模型，部分运行指标为模拟数据。Zabbix、Prometheus、SNMP 及环境传感器等真实数据采集能力规划在后续版本中接入。
+> 已提供 **采集 API**、**主机 Agent**、**SNMP 轮询器**、**腾讯云告警通知器** 骨架，可将大屏指标切换为真实上报数据（`metrics_simulation=0`）。SNMP 厂商 MIB 配置中带 `needs_verification` 的 OID 需在现场设备上核对。
 
 ## 🖼️ 界面预览
 
@@ -243,15 +243,14 @@ api/index.php?r=<resource>.<action>
 
 ## 🗺️ 路线图
 
-### v0.2 · 数据采集
+### v0.2 · 数据采集（本分支）
 
-当前 `metrics.tick` 使用模拟数据用于演示。后续计划包括：
-
-- [ ] **多机房支持**：机房切换、跨机房聚合视图及全局资产统计
-- [ ] **环境传感器接入**：真实数据上报、阈值告警与历史曲线
-- [ ] **交换机 SNMP**：端口状态、流量、链路信息及设备发现
-- [ ] **监控平台适配**：接入 Zabbix、Prometheus 等数据源
-- [ ] **统一数据接入**：为不同探针提供一致的数据上报方式
+- [x] **采集 API**（`api/ingest.php`）与令牌管理（`monitor.php`）
+- [x] **主机 Agent**（Go，`agents/host/`）
+- [x] **SNMP 轮询器**（Go + JSON MIB 配置，`agents/snmp/`）
+- [x] **告警通知器**（腾讯云 TC3 签名骨架，`agents/notifier/`）
+- [ ] **多机房聚合**、IF-MIB 端口级流量、Zabbix/Prometheus 适配
+- [ ] 更多厂商 MIB 现场验证与自动发现
 
 ### 后续规划
 

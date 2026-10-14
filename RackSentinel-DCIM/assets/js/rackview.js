@@ -236,7 +236,11 @@ function firstFreeU(v, size) {
 
 /* ---------------- 设备表单字段（右侧面板与弹窗共用） ---------------- */
 const FIELDS = ['name', 'hostname', 'ip', 'mgmt_ip', 'type_key', 'os_key', 'u_start', 'u_size',
-                'vendor', 'model', 'serial', 'asset_tag', 'owner', 'status', 'power_w', 'note'];
+                'vendor', 'model', 'serial', 'asset_tag', 'owner', 'status', 'power_w', 'note',
+                'monitor_mode', 'snmp_enabled', 'snmp_version', 'snmp_host', 'snmp_port',
+                'snmp_community', 'snmp_v3_user', 'snmp_v3_auth_proto', 'snmp_v3_auth_pass',
+                'snmp_v3_priv_proto', 'snmp_v3_priv_pass', 'snmp_profile'];
+let SNMP_PROFILES = [];
 
 function deviceFields(d, uTotal, p) {
   const opt = (obj, cur) => Object.entries(obj)
@@ -270,7 +274,70 @@ function deviceFields(d, uTotal, p) {
       <label class="fld"><span>负责人</span><input type="text" id="${p}owner" value="${esc(d.owner)}"></label>
     </div>
     <label class="fld"><span>备注</span><textarea id="${p}note" rows="2">${esc(d.note)}</textarea></label>
+    <div class="card-t" style="margin-top:14px"><h3>监控采集</h3><span class="en">MONITOR</span></div>
+    <div class="row2">
+      <label class="fld"><span>监控模式</span><select id="${p}monitor_mode">
+        <option value="none" ${d.monitor_mode === 'none' || !d.monitor_mode ? 'selected' : ''}>无</option>
+        <option value="agent" ${d.monitor_mode === 'agent' ? 'selected' : ''}>主机 Agent</option>
+        <option value="snmp" ${d.monitor_mode === 'snmp' ? 'selected' : ''}>SNMP</option>
+      </select></label>
+      <label class="fld"><span>启用 SNMP</span><select id="${p}snmp_enabled">
+        <option value="0" ${+d.snmp_enabled ? '' : 'selected'}>否</option>
+        <option value="1" ${+d.snmp_enabled ? 'selected' : ''}>是</option>
+      </select></label>
+    </div>
+    <div class="row3">
+      <label class="fld"><span>SNMP 版本</span><select id="${p}snmp_version">
+        ${['1','2c','3'].map(v => `<option value="${v}" ${(d.snmp_version || '2c') === v ? 'selected' : ''}>v${v}</option>`).join('')}
+      </select></label>
+      <label class="fld"><span>SNMP 主机</span><input id="${p}snmp_host" value="${esc(d.snmp_host || '')}" placeholder="默认同管理 IP"></label>
+      <label class="fld"><span>端口</span><input type="number" id="${p}snmp_port" value="${esc(d.snmp_port || 161)}"></label>
+    </div>
+    <div class="row2">
+      <label class="fld"><span>Community (v1/v2c)</span><input id="${p}snmp_community" value="${esc(d.snmp_community || '')}" autocomplete="off"></label>
+      <label class="fld"><span>厂商 MIB 配置</span><select id="${p}snmp_profile">
+        <option value="">— 自动 / 标准 MIB —</option>
+        ${SNMP_PROFILES.map(pr => `<option value="${esc(pr.id)}" ${d.snmp_profile === pr.id ? 'selected' : ''}>${esc(pr.name)}${pr.needs_verification ? ' *' : ''}</option>`).join('')}
+      </select></label>
+    </div>
+    <div class="row2">
+      <label class="fld"><span>SNMPv3 用户</span><input id="${p}snmp_v3_user" value="${esc(d.snmp_v3_user || '')}"></label>
+      <label class="fld"><span>Auth 协议</span><select id="${p}snmp_v3_auth_proto">
+        ${['MD5','SHA'].map(v => `<option ${(d.snmp_v3_auth_proto || 'SHA') === v ? 'selected' : ''}>${v}</option>`).join('')}
+      </select></label>
+    </div>
+    <div class="row2">
+      <label class="fld"><span>Auth 密码</span><input type="password" id="${p}snmp_v3_auth_pass" value="${esc(d.snmp_v3_auth_pass || '')}" autocomplete="new-password"></label>
+      <label class="fld"><span>Priv 协议</span><select id="${p}snmp_v3_priv_proto">
+        ${['DES','AES'].map(v => `<option ${(d.snmp_v3_priv_proto || 'AES') === v ? 'selected' : ''}>${v}</option>`).join('')}
+      </select></label>
+    </div>
+    <label class="fld"><span>Priv 密码</span><input type="password" id="${p}snmp_v3_priv_pass" value="${esc(d.snmp_v3_priv_pass || '')}" autocomplete="new-password"></label>
+    <div class="flex mt12" style="gap:8px">
+      <button type="button" class="btn sm" data-snmp-test>测试 SNMP 连接</button>
+      ${d.id ? `<a class="btn sm" href="device-monitor.php?id=${d.id}">监控详情</a>` : ''}
+    </div>
     <div class="hint" id="${p}hint"></div>`;
+}
+
+function bindSnmpTest(scope, prefix) {
+  const btn = $('[data-snmp-test]', scope);
+  if (!btn) return;
+  btn.onclick = async () => {
+    const payload = {
+      snmp_host: $('#' + prefix + 'snmp_host', scope)?.value,
+      snmp_port: $('#' + prefix + 'snmp_port', scope)?.value,
+      snmp_version: $('#' + prefix + 'snmp_version', scope)?.value,
+      snmp_community: $('#' + prefix + 'snmp_community', scope)?.value,
+      mgmt_ip: $('#' + prefix + 'mgmt_ip', scope)?.value,
+      ip: $('#' + prefix + 'ip', scope)?.value,
+    };
+    if (S.sel) payload.id = S.sel;
+    try {
+      const r = await api('device.snmp_test', { method: 'POST', body: payload });
+      toast(r.ok ? `探测成功 · ${r.profile_id || '自动'}` : (r.error || '失败'), r.ok ? 'ok' : 'err');
+    } catch (e) { toast(e.message, 'err'); }
+  };
 }
 
 /** 类型变化时联动：无操作系统的类型禁用系统下拉，并提示默认高度 */
@@ -324,6 +391,7 @@ function showDevice(id) {
   bindTypeSync(box, 'e_', () => {
     $('#e_u_size', box).value = META.types[$('#e_type_key', box).value].u;
   });
+  bindSnmpTest(box, 'e_');
 
   const btn = $('#dvSave', box);
   btn.onclick = async () => {
@@ -373,6 +441,7 @@ function openForm(dev, presetU = 0) {
       bindTypeSync(bodyEl, 'f_', () => {
         $('#f_u_size', bodyEl).value = META.types[$('#f_type_key', bodyEl).value].u;
       });
+      bindSnmpTest(bodyEl, 'f_');
     },
   });
 
@@ -456,6 +525,7 @@ function renderLegend() {
 
 (async () => {
   try {
+    try { SNMP_PROFILES = await api('snmp.profiles'); } catch (_) { SNMP_PROFILES = []; }
     renderLegend();
     $('#viewOne').classList.toggle('on', S.mode === 'one');
     $('#viewRow').classList.toggle('on', S.mode === 'row');

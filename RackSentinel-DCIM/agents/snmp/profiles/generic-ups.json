@@ -1,0 +1,10 @@
+{
+  "id": "generic-ups",
+  "name": "UPS (RFC1628 UPS-MIB)",
+  "vendor": "generic",
+  "needs_verification": false,
+  "sys_object_id_prefixes": [],
+  "features": ["ups_mib"],
+  "metrics": [],
+  "alerts": []
+}

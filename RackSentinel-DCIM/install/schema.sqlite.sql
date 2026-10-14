@@ -94,6 +94,19 @@ CREATE TABLE devices (
   owner      TEXT,
   status     TEXT    NOT NULL DEFAULT 'online',
   power_w    INTEGER NOT NULL DEFAULT 0,
+  monitor_mode TEXT NOT NULL DEFAULT 'none',
+  last_heartbeat_at TEXT,
+  snmp_enabled INTEGER NOT NULL DEFAULT 0,
+  snmp_version TEXT NOT NULL DEFAULT '2c',
+  snmp_host TEXT,
+  snmp_port INTEGER NOT NULL DEFAULT 161,
+  snmp_community TEXT,
+  snmp_v3_user TEXT,
+  snmp_v3_auth_proto TEXT DEFAULT 'SHA',
+  snmp_v3_auth_pass TEXT,
+  snmp_v3_priv_proto TEXT DEFAULT 'AES',
+  snmp_v3_priv_pass TEXT,
+  snmp_profile TEXT,
   note       TEXT,
   created_at TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
 );
@@ -140,3 +153,46 @@ CREATE TABLE sensors (
   status  TEXT DEFAULT 'normal'
 );
 CREATE INDEX idx_sensors_room ON sensors(room_id);
+
+CREATE TABLE monitor_agents (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  name         TEXT NOT NULL,
+  kind         TEXT NOT NULL DEFAULT 'host',
+  device_id    INTEGER,
+  token_hash   TEXT NOT NULL UNIQUE,
+  token_prefix TEXT NOT NULL DEFAULT '',
+  scopes_json  TEXT,
+  enabled      INTEGER NOT NULL DEFAULT 1,
+  last_seen_at TEXT,
+  last_ip      TEXT,
+  meta_json    TEXT,
+  created_at   TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+);
+
+CREATE TABLE ingest_rate (
+  id       INTEGER PRIMARY KEY AUTOINCREMENT,
+  agent_id INTEGER NOT NULL,
+  bucket   TEXT NOT NULL,
+  count    INTEGER NOT NULL DEFAULT 0,
+  UNIQUE(agent_id, bucket)
+);
+
+CREATE TABLE notification_recipients (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  name       TEXT NOT NULL,
+  phone      TEXT,
+  sms_phone  TEXT,
+  min_level  TEXT NOT NULL DEFAULT 'warning',
+  enabled    INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+);
+
+CREATE TABLE notification_log (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  alert_id    INTEGER,
+  channel     TEXT NOT NULL,
+  recipient   TEXT NOT NULL,
+  status      TEXT NOT NULL DEFAULT 'sent',
+  detail      TEXT,
+  created_at  TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+);

@@ -1,0 +1,17 @@
+{
+  "id": "cisco-ios",
+  "name": "Cisco IOS / NX-OS",
+  "vendor": "Cisco",
+  "description": "CISCO-PROCESS-MIB / ENVMON / MEMORY-POOL",
+  "needs_verification": true,
+  "sys_object_id_prefixes": ["1.3.6.1.4.1.9.1."],
+  "features": ["if_mib", "multi_cpu", "entity_sensor"],
+  "metrics": [
+    { "key": "cpu", "oid": "1.3.6.1.4.1.9.9.109.1.1.1.1.5.1", "scale": 1 },
+    { "key": "mem_used_pct", "oid": "1.3.6.1.4.1.9.9.48.1.1.1.5.1", "scale": 1 },
+    { "key": "temp", "oid": "1.3.6.1.4.1.9.9.13.1.3.1.3.1", "scale": 1 }
+  ],
+  "alerts": [
+    { "key": "cpu", "oid": "1.3.6.1.4.1.9.9.109.1.1.1.1.5.1", "hi": 85, "level": "warning", "title": "Cisco CPU 5min 偏高" }
+  ]
+}

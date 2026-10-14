@@ -12,14 +12,23 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     } elseif (($_POST['form'] ?? '') === 'site') {
         $vals = [];
         foreach (setting_schema() as $k => $_) {
-            $vals[$k] = trim((string) ($_POST[$k] ?? ''));
+            if (!array_key_exists($k, $_POST)) {
+                continue;
+            }
+            $vals[$k] = trim((string) $_POST[$k]);
         }
-        if ($vals['app_name'] === '' || $vals['wall_title'] === '') {
+        if (isset($vals['tencent_secret_key']) && $vals['tencent_secret_key'] === '') {
+            unset($vals['tencent_secret_key']);
+        }
+        if (isset($vals['app_name']) && ($vals['app_name'] === '' || ($vals['wall_title'] ?? setting('wall_title')) === '')) {
             $err = '平台名称和大屏标题不能为空';
-        } else {
-            $vals['poll_ms'] = (string) max(1000, (int) $vals['poll_ms']);
+        } elseif ($vals) {
+            if (isset($vals['poll_ms'])) {
+                $vals['poll_ms'] = (string) max(1000, (int) $vals['poll_ms']);
+            }
             settings_save($vals);
-            header('Location: settings.php?saved=1');
+            $back = trim((string) ($_POST['redirect'] ?? ''));
+            header('Location: ' . ($back !== '' ? $back : 'settings.php?saved=1'));
             exit;
         }
     } elseif (($_POST['form'] ?? '') === 'pwd') {
