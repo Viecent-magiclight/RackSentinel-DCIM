@@ -10,7 +10,6 @@ $root = dirname(__DIR__);
 putenv('RACK_DB_DRIVER=sqlite');
 require $root . '/lib/db.php';
 require $root . '/lib/helpers.php';
-require $root . '/lib/catalog.php';
 require $root . '/lib/vsdx.php';
 
 if (!db_installed()) {
@@ -33,9 +32,18 @@ if (!is_dir($dir)) {
     mkdir($dir, 0755, true);
 }
 
-$tmp = vsdx_build_row_file((int) $rack['id']);
-if (!rename($tmp, $out)) {
-    copy($tmp, $out);
-    @unlink($tmp);
+$built = vsdx_build_row_file((int) $rack['id']);
+if (!rename($built, $out)) {
+    copy($built, $out);
+    @unlink($built);
 }
+
+$py = trim((string) shell_exec('command -v python3 2>/dev/null'));
+if ($py !== '') {
+    passthru(
+        escapeshellarg($py) . ' ' . escapeshellarg(vsdx_python_script())
+        . ' --verify-only -o ' . escapeshellarg($out) . ' 2>&1'
+    );
+}
+
 echo "Wrote {$out} (anchor rack {$rack['name']}, id {$rack['id']})\n";

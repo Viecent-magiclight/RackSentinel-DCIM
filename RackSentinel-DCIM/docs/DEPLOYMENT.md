@@ -5,7 +5,7 @@
 1. 安装 PHP 8 + PDO（MySQL 或 `RACK_DB_DRIVER=sqlite`）。
 2. 访问 `install.php` 或运行迁移（页面加载时自动 `run_migrations()`）。
 3. **监控采集** (`monitor.php`)：关闭指标模拟、创建 Agent 令牌。
-4. **机柜 Visio 导出**：`export.php?r=visio&rack=<id>` 或机柜页 **导出 Visio**；需 PHP **zip** 扩展。输出为 Visio **2013+** `.vsdx`（可编辑矩形设备块，非位图）。Microsoft Visio 桌面版为推荐打开方式；部分在线预览可能只读。
+4. **机柜 Visio 导出**：`export.php?r=visio&rack=<id>` 或机柜页 **导出 Visio**。服务端需 **python3** 与 `pip install vsdx`；由 `scripts/build_rack_visio.py` 基于 `lib/vsdx/template.vsdx` 克隆 Visio 矩形母版生成。输出为 Visio **2013+** `.vsdx`（可编辑形状，非位图）。Microsoft Visio 桌面版为推荐打开方式。
 
 ## 主机 Agent (`agents/host`)
 
