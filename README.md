@@ -6,11 +6,13 @@
 
 **机房资产与运维管理平台 · Data Center Infrastructure Management**
 
-自绘机房平面图 · 机柜 U 位资产管理 · 运维状态可视化
+自绘机房平面图 · 机柜 U 位资产管理 · 运维状态可视化 · 真实监控采集
 
 <br />
 
+[![Release](https://img.shields.io/github/v/release/Viecent-magiclight/RackSentinel-DCIM?label=v0.2.0&color=3d9a8b)](https://github.com/Viecent-magiclight/RackSentinel-DCIM/releases/tag/v0.2.0)
 [![PHP](https://img.shields.io/badge/PHP-8.0%2B-777BB4?logo=php&logoColor=white)](https://www.php.net/)
+[![Go](https://img.shields.io/badge/Go-1.22%2B-00ADD8?logo=go&logoColor=white)](https://go.dev/)
 [![MySQL](https://img.shields.io/badge/MySQL-5.7%2B-4479A1?logo=mysql&logoColor=white)](https://www.mysql.com/)
 [![SQLite](https://img.shields.io/badge/SQLite-supported-003B57?logo=sqlite&logoColor=white)](https://www.sqlite.org/)
 [![REST API](https://img.shields.io/badge/API-REST-FF6B57)](#-rest-api)
@@ -18,7 +20,7 @@
 
 [简体中文](README.md) | [English](README_EN.md)
 
-[功能特性](#-功能特性) · [界面预览](#-界面预览) · [快速开始](#-快速开始) · [技术架构](#-技术架构) · [路线图](#-路线图)
+[功能特性](#-功能特性) · [快速开始](#-快速开始) · [监控与边缘组件](#-监控与边缘组件) · [技术架构](#-技术架构) · [路线图](#-路线图)
 
 </div>
 
@@ -26,13 +28,17 @@
 
 ## 📖 项目简介
 
-**RackSentinel** 是一个面向数据中心机房的资产与运维管理平台，提供机房平面图设计、机柜 U 位管理、设备清单、运维大屏及告警管理等功能。
+**RackSentinel** 是面向数据中心机房的资产与运维管理平台：平面图与机柜 DCIM、运维大屏，以及 **v0.2** 起的真实监控数据通路（采集 API、主机 Agent、SNMP 轮询、腾讯云告警通知）。
 
-项目采用 **纯 PHP + PDO + 原生 JavaScript** 构建，无需 Composer、无需前端构建工具；支持 MySQL 与 SQLite，适合本地体验、私有化部署及二次开发。
+Web 端采用 **纯 PHP + PDO + 原生 JavaScript**（无 Composer、无前端构建）；边缘组件为 **Go 单文件二进制**。数据库支持 MySQL 与 SQLite。
 
-> **当前版本：`v0.2`（监控采集预览）**
+> **当前正式版本：[v0.2.0](https://github.com/Viecent-magiclight/RackSentinel-DCIM/releases/tag/v0.2.0)**
 >
-> 已提供 **采集 API**、**主机 Agent**、**SNMP 轮询器**、**腾讯云告警通知器** 骨架，可将大屏指标切换为真实上报数据（`metrics_simulation=0`）。SNMP 厂商 MIB 配置中带 `needs_verification` 的 OID 需在现场设备上核对。
+> - 在 Web「**监控采集**」页关闭「大屏指标模拟」（`metrics_simulation=0`）后，大屏展示 Agent / SNMP **上报的真实指标**。
+> - 仍可选择开启模拟（`metrics_simulation=1`）用于演示。
+> - SNMP 厂商配置中标记 **`needs_verification`** 的 OID 需在现场设备上核对。
+
+应用代码位于仓库子目录 **`RackSentinel-DCIM/`**（下文路径均相对于该目录）。
 
 ## 🖼️ 界面预览
 
@@ -61,237 +67,361 @@
   <img src="Preview/Asset%20Management.png" alt="RackSentinel 资产管理界面" width="85%" />
 </p>
 
-> 图片存放于 [`Preview/`](./Preview) 目录。若图片未正常显示，请检查文件名大小写及路径是否与仓库中的文件一致。
+> 图片存放于仓库根目录 [`Preview/`](./Preview)。
 
 ## ✨ 功能特性
 
 | 功能模块 | 能力说明 |
 | --- | --- |
-| 🖥️ **运维大屏** | 3D 机房与平面图视图、设备状态统计、U 位容量与功率、告警概览及负载趋势；默认每 5 秒轮询 |
-| ✏️ **平面图设计器** | 绘制墙体、玻璃隔断、门、窗、柱；放置机柜与环境传感器；支持网格吸附、撤销与重做 |
-| 📐 **机柜 U 位管理** | 42U 机柜立面图；拖动设备调整 U 位或跨柜搬迁；维护设备名称、主机名、IP、型号及资产编号 |
-| 🔍 **设备资产清单** | 按名称、主机名、IP、型号、资产编号搜索，并按设备类型、操作系统、状态和机柜筛选 |
-| 📤 **Excel 导入 / 导出** | 导出设备清单与逐柜 U 位图；支持批量新增、更新、删除，导入前执行整批校验 |
-| 🚨 **告警管理** | 查看告警列表并确认告警 |
-| ⚙️ **系统设置** | 配置站点名称、大屏标题、刷新间隔及账号密码 |
-| 🧭 **3D 机房场景** | 使用 Three.js 展示三维场景；加载失败时自动回退到平面图 |
+| 🖥️ **运维大屏** | 3D / 平面图、设备状态、U 位与功率、告警与负载趋势；支持真实指标或演示模拟 |
+| ✏️ **平面图设计器** | 墙体、门窗、柱、机柜、环境传感器；网格吸附、撤销重做 |
+| 📐 **机柜 U 位管理** | 42U 立面、拖放改 U 位 / 跨柜搬迁；SNMP 与监控字段 |
+| 🔍 **设备清单** | 搜索、筛选、Excel 导入导出 |
+| 📡 **采集 API** | `api/ingest.php`：令牌鉴权、心跳 / 指标 / 健康 / 告警、SNMP 上报（见 [INGEST_API.md](RackSentinel-DCIM/docs/INGEST_API.md)） |
+| 🖧 **主机 Agent** | Linux / macOS / Windows 采集 CPU、内存、磁盘、网络；离线缓冲 |
+| 🔀 **SNMP 轮询器** | IF-MIB、多 CPU、ENTITY-SENSOR、UPS-MIB；`sysObjectID` 匹配厂商 JSON 配置 |
+| 📞 **告警通知器** | 拉取未确认告警，腾讯云 **短信** 与 **语音**（TC3 签名） |
+| 🛎️ **监控采集 / 告警中心** | `monitor.php` 管理令牌与腾讯云设置；`alerts.php`、`device-monitor.php` |
+| ⚙️ **系统设置** | 站点名称、大屏标题、刷新间隔、账号密码 |
 
-**支持的设备类型**
-
-服务器、刀片机箱、交换机、路由器、防火墙、网关、负载均衡、存储阵列、磁带库、UPS、PDU、KVM、控制台、配线架、盲板。
-
-**环境传感器类型**
-
-温度、湿度、烟感、漏水、配电。
+**支持的设备类型**：服务器、交换机、路由器、防火墙、存储、UPS、PDU、KVM 等（见 `lib/catalog.php`）。
 
 ## 🧰 技术栈
 
 | 层级 | 技术 |
 | --- | --- |
-| 后端 | PHP 8.0+、PDO 预处理、REST API 单入口 |
-| 数据库 | MySQL 5.7+/8.0 或 SQLite，双驱动可切换 |
-| 前端 | 原生 JavaScript，无前端框架、无构建步骤 |
-| 3D 场景 | Three.js（通过 CDN 加载） |
-| 图标 | SVG 图标雪碧图 |
-| Excel | 纯 PHP 实现的 XLSX 读写库，无额外依赖 |
+| Web 后端 | PHP 8.0+、PDO、REST 单入口 |
+| 数据库 | MySQL 5.7+/8.0 或 SQLite |
+| Web 前端 | 原生 JavaScript、Three.js（CDN） |
+| 边缘组件 | Go 1.22+（host / snmp / notifier） |
+| Excel | 纯 PHP XLSX 库 |
 
 ## 🚀 快速开始
 
 ### 环境要求
 
-- PHP **8.0+**
-- MySQL **5.7+/8.0**，或启用 `pdo_sqlite` 使用 SQLite
-- 任意可运行 PHP 的 Web 服务器
-- 使用 MySQL 时需启用 `pdo_mysql`
+- PHP **8.0+**（`pdo_mysql` 或 `pdo_sqlite`）
+- 可选：Go 1.22+（仅当自行编译 Agent 时）
+- Web 服务器或 `php -S`
 
-### 1. 获取项目
+### 1. 获取代码
 
 ```bash
 git clone https://github.com/Viecent-magiclight/RackSentinel-DCIM.git
-cd RackSentinel-DCIM
+cd RackSentinel-DCIM/RackSentinel-DCIM
 ```
 
 ### 2. 配置数据库
 
-编辑 `config/config.php` 中的数据库连接配置，例如：
+编辑 `config/config.php`，或使用环境变量 `RACK_DB_DRIVER=sqlite` 快速体验（见下文）。
 
-```php
-'mysql' => [
-    'host'     => '127.0.0.1',
-    'port'     => 3306,
-    'database' => 'server_rack',
-    'username' => 'root',
-    'password' => 'your_password',
-    'charset'  => 'utf8mb4',
-],
-```
+### 3. 安装
 
-数据库账号需要具备创建数据库的权限；如果数据库已提前创建，则需要具备建表权限。
-
-### 3. 安装并初始化数据
-
-浏览器访问 `install.php`，点击“开始安装并写入样本数据”。
-
-也可以通过命令行安装：
+浏览器访问 `install.php`，或：
 
 ```bash
 php install/cli.php
 ```
 
-安装脚本会创建表结构并写入演示数据，包括机房、平面图元、机柜、设备、传感器、指标历史及告警样本。
-
-> ⚠️ **注意：安装脚本会先删除并重建相关数据表。重新安装可能清空现有数据，请勿直接在含有重要数据的环境中执行。**
-
-### 4. 启动并访问
-
-将 Web 服务器站点根目录指向项目目录，然后打开 `index.php` 访问运维大屏。
-
-如需使用 PHP 内置服务器进行本地体验：
+### 4. 启动
 
 ```bash
 php -S 127.0.0.1:8123 -t .
 ```
 
-然后访问 `http://127.0.0.1:8123`。
+默认管理员：`admin` / `admin123`（安装后请修改密码）。
 
-## 🪶 使用 SQLite 快速体验
-
-不想配置 MySQL？可以通过环境变量切换到 SQLite。数据文件会写入 `storage/server_rack.sqlite`。
-
-**Linux / macOS**
+### SQLite 快速体验
 
 ```bash
 RACK_DB_DRIVER=sqlite php install/cli.php
 RACK_DB_DRIVER=sqlite php -S 127.0.0.1:8123 -t .
 ```
 
-**Windows PowerShell**
+数据文件：`storage/server_rack.sqlite`。
 
-```powershell
-$env:RACK_DB_DRIVER = "sqlite"
-php install/cli.php
-php -S 127.0.0.1:8123 -t .
+---
+
+## 📡 监控与边缘组件
+
+详细部署说明见 **[docs/DEPLOYMENT.md](RackSentinel-DCIM/docs/DEPLOYMENT.md)**。采集 HTTP 契约见 **[docs/INGEST_API.md](RackSentinel-DCIM/docs/INGEST_API.md)**。
+
+预编译二进制：[GitHub Release v0.2.0](https://github.com/Viecent-magiclight/RackSentinel-DCIM/releases/tag/v0.2.0)（`racksentinel-host-*`、`racksentinel-snmp-*`、`racksentinel-notifier-*`，含 linux/darwin/windows × amd64/arm64；SNMP 另附 `racksentinel-snmp-profiles-v0.2.0.tar.gz`）。
+
+自行打包：
+
+```bash
+cd agents && ./release-build.sh /path/to/output v0.2.0
 ```
 
-MySQL 与 SQLite 使用一致的表结构，可按需切换数据库驱动。
+### Web：创建采集令牌
+
+1. 登录后打开 **监控采集**（`monitor.php`）。
+2. 关闭「大屏指标模拟」并保存（写入 `metrics_simulation=0`）。
+3. 按需创建令牌（**完整令牌仅显示一次**，请妥善保存）：
+   - **+ 主机 Agent**：须选择绑定设备；用于 `ingest:device`。
+   - **+ SNMP 轮询器令牌**：`snmp_poller`，用于拉取 SNMP 目标并上报。
+   - **+ 通知器令牌**：`notifier`，用于拉取告警列表。
+
+`server_url` 应指向：`https://<你的域名>/<路径>/api/ingest.php`（无尾部斜杠）。
+
+---
+
+### 1️⃣ 主机 Agent（`racksentinel-host`）
+
+#### 下载与配置
+
+1. 从 [v0.2.0 Release](https://github.com/Viecent-magiclight/RackSentinel-DCIM/releases/tag/v0.2.0) 下载对应平台的 `racksentinel-host-<os>-<arch>`（Windows 为 `.exe`）。
+2. 复制 `agents/host/config.example.json` 为 `config.json`（或与二进制同目录）。
+
+| 字段 | 说明 |
+| --- | --- |
+| `server_url` | 采集 API 基址，例如 `https://dcim.example.com/api/ingest.php` |
+| `token` | 主机 Agent 令牌（创建时一次性显示） |
+| `interval_sec` | 上报间隔（秒），默认 `60` |
+| `buffer_file` | 离线队列文件，默认 `buffer.json` |
+
+环境变量（可覆盖配置）：`RACK_INGEST_URL`、`RACK_AGENT_TOKEN`、`RACK_AGENT_CONFIG`（配置文件路径）。
+
+#### Linux（systemd）
+
+```bash
+sudo cp racksentinel-host-linux-amd64 /usr/local/bin/racksentinel-host
+sudo mkdir -p /etc/racksentinel
+sudo cp config.json /etc/racksentinel/host-config.json
+sudo bash agents/host/scripts/install-linux.sh
+sudo systemctl start racksentinel-host
+sudo systemctl status racksentinel-host
+```
+
+**卸载**：`sudo systemctl disable --now racksentinel-host`；删除 `/etc/systemd/system/racksentinel-host.service` 后 `systemctl daemon-reload`。
+
+#### macOS（launchd）
+
+```bash
+sudo cp racksentinel-host-darwin-arm64 /usr/local/bin/racksentinel-host
+sudo cp config.json /usr/local/etc/racksentinel/host-config.json
+sudo bash agents/host/scripts/install-macos.sh /usr/local/bin/racksentinel-host /usr/local/etc/racksentinel/host-config.json
+```
+
+**卸载**：`sudo launchctl unload /Library/LaunchDaemons/com.racksentinel.host.plist` 并删除 plist。
+
+#### Windows（服务）
+
+```powershell
+# 将 racksentinel-host-windows-amd64.exe 与 config.json 放到例如 C:\Program Files\RackSentinel\
+.\agents\host\scripts\install-windows.ps1 -Binary "C:\Program Files\RackSentinel\racksentinel-host.exe" -Config "C:\ProgramData\RackSentinel\host-config.json"
+sc.exe start RackSentinelHost
+```
+
+服务使用 `-service -config <path>` 运行（见 `agents/host/service_windows.go`）。
+
+**卸载**：`sc.exe stop RackSentinelHost`；`sc.exe delete RackSentinelHost`。
+
+#### 离线缓冲与排障
+
+- 上报失败时，心跳与指标写入 `buffer_file`，恢复连通后自动重试。
+- 单次测试：`racksentinel-host -config config.json -once`。
+- 设备长时间离线：检查「监控采集」中 **心跳超时**（`heartbeat_stale_sec`）与设备 `monitor_mode=agent`。
+- HTTP 401：令牌错误或已禁用；403：令牌未绑定设备。
+
+---
+
+### 2️⃣ SNMP 轮询器（`racksentinel-snmp`）
+
+#### 令牌与配置
+
+1. 在 **监控采集** 创建 **SNMP 轮询器令牌**。
+2. 配置 `agents/snmp/config.example.json`：
+
+| 字段 | 说明 |
+| --- | --- |
+| `server_url` | 同上，指向 `api/ingest.php` |
+| `token` | SNMP 轮询器令牌 |
+| `interval_sec` | 轮询间隔，默认 `120` |
+| `profiles_dir` | MIB 配置目录，默认 `profiles`（Release 包请解压 `racksentinel-snmp-profiles-*.tar.gz`） |
+| `state_file` | 接口速率计数快照，默认 `snmp-state.json` |
+
+运行：`racksentinel-snmp -config config.json`；单次：` -once`。
+
+命令行探测（无需 Web 会话）：`racksentinel-snmp -probe -host 10.0.0.1 -community public -version 2c`
+
+#### Web：添加 SNMP 设备
+
+在 **机柜 U 位** 编辑设备：
+
+| 字段 | 说明 |
+| --- | --- |
+| `monitor_mode` | 设为 **`snmp`** |
+| `snmp_enabled` | **是** |
+| `snmp_version` | `1` / `2c` / `3` |
+| `snmp_host` | 留空则使用管理 IP / 业务 IP |
+| `snmp_port` | 默认 `161` |
+| `snmp_community` | v1/v2c Community |
+| `snmp_v3_user` / `snmp_v3_auth_proto` / `snmp_v3_auth_pass` / `snmp_v3_priv_proto` / `snmp_v3_priv_pass` | SNMPv3 |
+| `snmp_profile` | 可选厂商配置 ID；留空则根据 **sysObjectID 前缀** 自动匹配 |
+
+点击 **测试 SNMP 连接**（调用本机 `racksentinel-snmp -probe`，需在服务器上安装二进制）。
+
+监控详情见 `device-monitor.php?id=<设备ID>`（接口、传感器、指标趋势）。
+
+#### 厂商配置（`agents/snmp/profiles/*.json`）
+
+| 配置 ID | 厂商 / 场景 | 现场核对 |
+| --- | --- | --- |
+| `generic-host-resources` | 标准 HOST-RESOURCES / IF-MIB | 部分需核对 |
+| `generic-ups` | RFC1628 UPS-MIB | 否 |
+| `cisco-ios` | Cisco CPU / 内存 / 温度 | **needs_verification** |
+| `huawei-switch` | 华为交换机 | **needs_verification** |
+| `h3c-switch` | H3C HH3C-ENTITY-EXT | **needs_verification** |
+| `brocade-fc` | Brocade / Broadcom SAN | **needs_verification** |
+| `dell-emc-unity` | Dell EMC Unity | **needs_verification** |
+| `hpe-3par` | HPE 3PAR / Primera | **needs_verification** |
+| `huawei-oceanstor` | 华为 OceanStor | **needs_verification** |
+| `netapp-ontap` | NetApp ONTAP | **needs_verification** |
+| `synology-dsm` | Synology | **needs_verification** |
+| `qnap-qts` | QNAP | **needs_verification** |
+| `ibm-storwize` | IBM Storwize / FlashSystem | **needs_verification** |
+| `hitachi-storage` | Hitachi | **needs_verification** |
+
+#### 以服务运行（示例：Linux systemd）
+
+可参考主机 Agent 编写 unit：`ExecStart=/usr/local/bin/racksentinel-snmp -config /etc/racksentinel/snmp-config.json`，`Restart=always`。
+
+---
+
+### 3️⃣ 告警通知器（`racksentinel-notifier`）
+
+#### 平台侧（Web）
+
+在 **监控采集** → **告警通知（腾讯云）**：
+
+| 设置项（`settings` 键） | 说明 |
+| --- | --- |
+| `notify_enabled` | `1` 启用（通知器仍建议以环境变量提供密钥） |
+| `tencent_secret_id` / `tencent_secret_key` | 可留空，改用环境变量 |
+| `tencent_sms_app_id` / `tencent_sms_sign` / `tencent_sms_template_id` | 短信 |
+| `tencent_vms_app_id` / `tencent_vms_template_id` | 语音 |
+| `notify_dedupe_sec` | 去重间隔（秒） |
+| `notify_rate_per_hour` | 每小时最大外呼次数 |
+| `notify_voice_mode` | `tts`（SendTtsVoice）或 `code`（SendCodeVoice） |
+
+**收件人**：同一页面添加；字段包括 `phone`（语音）、`sms_phone`、`min_level`（`info`/`warning`/`critical`）、`escalate_min`（告警创建后多少分钟才通知）。
+
+**测试发送**：保存配置后点击 **测试发送**（调用 `notify.test_send` API，需有效腾讯云模板与签名）。
+
+环境变量（推荐，勿写入仓库）：`TENCENT_SECRET_ID`、`TENCENT_SECRET_KEY`。
+
+#### 通知器进程配置
+
+复制 `agents/notifier/config.example.json`：
+
+| 字段 | 说明 |
+| --- | --- |
+| `server_url` / `token` | 指向 `api/ingest.php` 与 **通知器令牌** |
+| `interval_sec` | 轮询间隔 |
+| `secret_id` / `secret_key` | 可留空，使用环境变量 |
+| `sms_sdk_app_id` / `sms_sign` / `sms_template_id` | 短信（与 Web 设置一致） |
+| `vms_sdk_app_id` / `vms_template_id` | 语音 |
+| `dedupe_sec` / `rate_per_hour` / `voice_mode` | 去重、限流、语音模式 |
+
+CLI 测试（需 `TEST_PHONE`）：`TEST_PHONE=+86... racksentinel-notifier -config config.json -test`
+
+行为概要：拉取 `alerts.pending` 与 `notify.recipients`；按级别与 `escalate_min` 过滤；去重与每小时限流；成功后可通过 `alerts.ack_remote` 确认（实现见 `agents/notifier`）。
+
+---
 
 ## 🏗️ 技术架构
 
 ```text
-┌──────────────────────────────────────────────────────────────┐
-│                        Web UI                                │
-│  运维大屏 · 平面图设计 · 机柜 U 位 · 设备清单 · 系统设置        │
-└──────────────────────────────┬───────────────────────────────┘
-                               │
-┌──────────────────────────────▼───────────────────────────────┐
-│                       REST API                               │
-│             api/index.php?r=<resource>.<action>              │
-│                   GET 读取 · POST + JSON 写入                 │
-└──────────────────────────────┬───────────────────────────────┘
-                               │
-┌──────────────────────────────▼───────────────────────────────┐
-│                         PHP 层                                │
-│  db.php · auth.php · catalog.php · helpers.php · xlsx.php     │
-└──────────────────────────────┬───────────────────────────────┘
-                               │
-┌──────────────────────────────▼───────────────────────────────┐
-│                    MySQL / SQLite                             │
-│  rooms · racks · devices · device_metrics · alerts · users    │
-└──────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│  Web UI：大屏 · 平面图 · 机柜 · 清单 · 监控采集 · 告警中心        │
+└────────────────────────────┬────────────────────────────────────┘
+                             │
+        ┌────────────────────┼────────────────────┐
+        │                    │                    │
+        ▼                    ▼                    ▼
+ api/index.php        api/ingest.php         install/
+ (会话 REST)          (Bearer 令牌)           migrate
+        │                    │
+        └──────────┬─────────┘
+                   ▼
+            PHP + PDO (lib/*)
+                   │
+                   ▼
+     MySQL / SQLite：devices · device_metrics · device_interfaces
+                      · device_sensors · monitor_agents · alerts · …
+                   ▲
+     ┌─────────────┴─────────────┬──────────────────┐
+     │                           │                  │
+ racksentinel-host      racksentinel-snmp    racksentinel-notifier
+ (主机指标)              (SNMP 轮询)           (腾讯云语音/短信)
 ```
 
 ### 核心数据关系
 
-- `rooms`：机房；关联 `walls`、`racks`、`sensors`
-- `racks`：机柜；关联按 U 位安装的 `devices`
-- `devices`：设备；关联 `device_metrics` 指标历史与 `alerts` 告警
-- `users`、`settings`、`login_attempts`：账号、站点设置与登录限速相关数据
+- `devices`：资产与 `monitor_mode`（`none` / `agent` / `snmp`）、SNMP 字段、`last_heartbeat_at`
+- `device_metrics` / `device_interfaces` / `device_sensors`：上报指标与 SNMP 详情
+- `monitor_agents`：采集令牌（哈希存储）
+- `alerts` / `notification_recipients`：告警与外呼收件人
 
 ## 🔌 REST API
 
-统一接口入口：
+**管理面**（需登录会话）：
 
 ```text
-api/index.php?r=<resource>.<action>
+RackSentinel-DCIM/api/index.php?r=<resource>.<action>
 ```
 
-读取请求使用 `GET`，写入请求使用 `POST + JSON body`。
+**采集面**（Bearer 令牌，无需浏览器 Cookie）：
 
-| 路由 | 说明 |
-| --- | --- |
-| `meta` | 获取设备类型、操作系统、状态等目录 |
-| `room.list` / `room.save` | 机房相关接口（为后续多机房能力预留） |
-| `layout.get` / `layout.save` | 读取与保存平面图布局 |
-| `rack.list` / `rack.get` / `rack.save` / `rack.delete` | 机柜查询与维护 |
-| `device.list` / `device.get` / `device.save` / `device.move` / `device.delete` | 设备维护与 U 位搬迁 |
-| `dashboard.summary` | 获取大屏汇总数据 |
-| `metrics.tick` | 推进一轮指标数据（当前为模拟数据） |
-| `alert.list` / `alert.ack` | 告警查询与确认 |
+```text
+RackSentinel-DCIM/api/ingest.php?r=<action>
+```
 
-设备保存、设备搬迁及 Excel 导入会校验 U 位是否越界或重叠；发生冲突时返回 `HTTP 422`。
+常用路由：`dashboard.summary`、`metrics.tick`（`metrics_simulation=0` 时仅回读真实指标）、`device.monitor`、`device.snmp_test`、`agent.*`、`notify.*`。
+
+完整采集契约：[docs/INGEST_API.md](RackSentinel-DCIM/docs/INGEST_API.md)。
 
 ## 🔐 安全设计
 
-- 使用 **bcrypt** 哈希密码
-- 登录失败按来源 IP 限速，降低暴力破解风险
-- 会话 Cookie 使用 `HttpOnly` 与 `SameSite=Lax`
-- 写入接口执行同源校验，降低 CSRF 风险
-- 登录成功后调用 `session_regenerate_id`，防止会话固定
-- 使用 PDO 预处理语句访问数据库
-- 写入字段通过白名单筛选
-- 提供 `install/verify.php` 对样本数据进行一致性检查
+- bcrypt 密码、登录 IP 限速、会话 HttpOnly / SameSite、写入同源校验、PDO 预处理、字段白名单。
+- **切勿**将腾讯云 SecretKey 或采集令牌提交到 Git；优先使用环境变量。
 
 ## 🗺️ 路线图
 
-### v0.2 · 数据采集（本分支）
+### v0.2（已发布）
 
-- [x] **采集 API**（`api/ingest.php`）与令牌管理（`monitor.php`）
-- [x] **主机 Agent**（Go，`agents/host/`）
-- [x] **SNMP 轮询器**（Go + JSON MIB 配置，`agents/snmp/`）
-- [x] **告警通知器**（腾讯云 TC3 签名骨架，`agents/notifier/`）
-- [ ] **多机房聚合**、IF-MIB 端口级流量、Zabbix/Prometheus 适配
+- [x] 采集 API、主机 / SNMP / 通知器、监控 UI、IF-MIB 与厂商配置框架
+
+### 后续
+
+- [ ] 多机房聚合、Zabbix/Prometheus 适配、更完整的 FC 端口级指标
 - [ ] 更多厂商 MIB 现场验证与自动发现
-
-### 后续规划
-
-- 跨机房统一拓扑与网络链路可视化
-- 设备生命周期、维护计划与工单
-- RBAC 多角色权限管理
-- 邮件、企业微信及 Webhook 告警通知
-- 3D 场景本地化，支持离线部署
+- [ ] RBAC、邮件 / 企业微信 / Webhook、3D 资源离线化
 
 ## 📁 目录结构
 
 ```text
-config/config.php       数据库与应用配置
-lib/db.php              PDO 封装（MySQL / SQLite）
-lib/auth.php            会话登录、同源校验、IP 限速
-lib/catalog.php         设备类型、操作系统及传感器目录
-lib/helpers.php         U 位冲突检测、机柜统计、导航渲染
-lib/xlsx.php            XLSX 读写
-api/index.php           REST API 单入口
-partials/               页面公共组件
-assets/css/app.css      全局样式
-assets/js/common.js     API 封装、图标、模态框及图表
-assets/js/planner.js    平面图设计器
-assets/js/rackview.js   机柜 U 位编辑器
-assets/js/dashboard.js  运维大屏
-assets/js/scene3d.js    三维机房场景
-install/                建表脚本、样本数据、安装及校验工具
-Preview/                README 界面预览图
+RackSentinel-DCIM/
+  api/index.php · api/ingest.php
+  monitor.php · alerts.php · device-monitor.php
+  docs/INGEST_API.md · docs/DEPLOYMENT.md
+  agents/host · agents/snmp · agents/notifier · agents/release-build.sh
+  lib/ingest.php · lib/ingest_snmp.php
+  install/ · assets/ · config/
+Preview/                 # 仓库根目录截图
 ```
 
 ## 📝 注意事项
 
-- **3D 场景依赖 CDN**：Three.js 从 CDN 加载；内网环境可改为本地资源。加载失败时会回退到平面图。
-- **指标历史写入节流**：大屏默认每 5 秒轮询，但历史指标按节流策略写入，以控制数据增长。
-- **平面图坐标单位**：使用厘米；机柜 `x` / `y` 为柜体中心，`rotation` 支持 `0/90/180/270`。
-- **U 位编号**：U1 位于机柜底部，编号向上递增。
-- **数据采集状态**：当前版本的运行指标为模拟数据，接入真实监控平台属于后续迭代内容。
+- 大屏默认 `poll_ms` 轮询；历史指标写入有节流（见 `metrics.tick`）。
+- 3D 依赖 Three.js CDN，失败时回退平面图。
+- U 位：U1 在机柜底部向上递增。
 
 ## 📄 License
 
-RackSentinel is licensed under the [MIT License](./LICENSE).
+[MIT License](./LICENSE)
 
 ---
 
@@ -300,7 +430,5 @@ RackSentinel is licensed under the [MIT License](./LICENSE).
 **RackSentinel · 让每一 U 空间一目了然**
 
 *Every rack unit, crystal clear.*
-
-Made with ❤️ · PHP · SQLite / MySQL · Vanilla JavaScript · Three.js
 
 </div>
