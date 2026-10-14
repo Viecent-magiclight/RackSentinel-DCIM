@@ -30,26 +30,11 @@ U_H = 0.25
 RACK_W = 1.8
 RACK_GAP = 0.4
 MARGIN_X = 0.75
-MARGIN_Y = 0.6
-TITLE_H = 0.55
-HEADER_H = 0.5
-RACK_PAD = 0.06
-
-STATUS_FILL = {
-    "online": "#1B3D30",
-    "warning": "#3D3018",
-    "offline": "#2A2030",
-    "maintenance": "#283040",
-}
-TYPE_LINE = {
-    "server": "#2ef2a3",
-    "switch": "#35c6ff",
-    "router": "#7c8cff",
-    "firewall": "#ff6b57",
-    "blank": "#3b5468",
-    "pdu": "#f4a261",
-    "patch": "#5d7f92",
-}
+MARGIN_Y = 0.5
+HEADER_H = 0.35
+RACK_PAD = 0.08
+LINE_BLACK = "#000000"
+LINE_WEIGHT_PT = "0.35"
 
 
 def load_from_sqlite(db_path: str, rack_id: int) -> dict:
@@ -88,13 +73,8 @@ def load_from_sqlite(db_path: str, rack_id: int) -> dict:
                 "devices": [dict(d) for d in devices],
             }
         )
-    title = row_label or anchor["name"]
-    if row_label:
-        names = "、".join(x["name"] for x in out_racks)
-        title = f"{row_label} — {len(out_racks)} 台机柜（{names}）"
-    title += f"\nRackSentinel DCIM"
     conn.close()
-    return {"title": title, "racks": out_racks}
+    return {"racks": out_racks}
 
 
 def find_rectangle_prototype(page) -> "Shape":
@@ -121,7 +101,23 @@ def shapes_container(page):
     return el
 
 
-def add_rect(proto, page, pin_x, pin_y, width, height, text, fill, line, font_pt=8):
+def _style_outline(sh, font_pt: int = 8, with_text: bool = True) -> None:
+    """Minimal Visio style: no fill, black border, horizontal centered text."""
+    sh.set_cell_value("FillPattern", "0")
+    sh.set_cell_value("LinePattern", "1")
+    sh.set_cell_value("LineColor", LINE_BLACK)
+    sh.set_cell_value("LineWeight", LINE_WEIGHT_PT)
+    sh.set_cell_value("Rounding", "0")
+    sh.set_cell_value("TextDirection", "0")
+    if with_text:
+        sh.set_cell_value("VerticalAlign", "1")
+        sh.set_cell_value("HorzAlign", "1")
+        sh.set_cell_value("CharColor", LINE_BLACK)
+        sh.set_cell_value("Size", str(font_pt))
+        sh.set_cell_value("LangID", "2052")
+
+
+def add_box(proto, page, pin_x, pin_y, width, height, text="", font_pt=8):
     sh = proto.copy(page)
     sh.x = pin_x
     sh.y = pin_y
@@ -130,20 +126,11 @@ def add_rect(proto, page, pin_x, pin_y, width, height, text, fill, line, font_pt
     sh.set_cell_formula("LocPinX", "Width*0.5")
     sh.set_cell_formula("LocPinY", "Height*0.5")
     sh.text = text
-    sh.fill_color = fill
-    sh.line_color = line
-    sh.set_cell_value("FillPattern", "1")
-    sh.set_cell_value("LinePattern", "1")
-    sh.set_cell_value("TextDirection", "0")
-    sh.set_cell_value("VerticalAlign", "1")
-    sh.set_cell_value("HorzAlign", "1")
-    sh.set_cell_value("Size", str(font_pt))
-    sh.set_cell_value("Rounding", "0")
-    sh.set_cell_value("LangID", "2052")
+    _style_outline(sh, font_pt, with_text=bool(text))
     return sh
 
 
-def add_label(proto, page, pin_x, pin_y, width, height, text, font_pt=10):
+def add_caption(proto, page, pin_x, pin_y, width, height, text, font_pt=11):
     sh = proto.copy(page)
     sh.x = pin_x
     sh.y = pin_y
@@ -155,7 +142,9 @@ def add_label(proto, page, pin_x, pin_y, width, height, text, font_pt=10):
     sh.set_cell_value("FillPattern", "0")
     sh.set_cell_value("LinePattern", "0")
     sh.set_cell_value("TextDirection", "0")
-    sh.set_cell_value("CharColor", "#203040")
+    sh.set_cell_value("CharColor", LINE_BLACK)
+    sh.set_cell_value("VerticalAlign", "1")
+    sh.set_cell_value("HorzAlign", "1")
     sh.set_cell_value("Size", str(font_pt))
     return sh
 
@@ -168,7 +157,7 @@ def build_vsdx(payload: dict, output_path: str) -> None:
     max_u = max(int(r.get("u_total") or 42) for r in racks)
     grid_h = max_u * U_H
     page_w = MARGIN_X * 2 + len(racks) * RACK_W + (len(racks) - 1) * RACK_GAP
-    page_h = MARGIN_Y * 2 + TITLE_H + HEADER_H + grid_h
+    page_h = MARGIN_Y * 2 + HEADER_H + grid_h
 
     work = tempfile.mkdtemp(prefix="vsdx-build-")
     try:
@@ -191,70 +180,27 @@ def build_vsdx(payload: dict, output_path: str) -> None:
         proto = find_rectangle_prototype(page)
         clear_page_shapes(page)
 
-        base_y = MARGIN_Y
         top_y = page_h - MARGIN_Y
-
-        add_label(
-            proto,
-            page,
-            page_w / 2,
-            top_y - TITLE_H / 2,
-            min(page_w - 0.5, 14),
-            TITLE_H,
-            payload.get("title", "RackSentinel"),
-            12,
-        )
-
-        rack_top = top_y - TITLE_H - HEADER_H
+        rack_top = top_y - HEADER_H
         rack_base = rack_top - grid_h
 
         for i, rack in enumerate(racks):
             left = MARGIN_X + i * (RACK_W + RACK_GAP)
             cx = left + RACK_W / 2
-            st = rack.get("stats") or {}
-            u_total = int(rack.get("u_total") or 42)
-            pwr = (st.get("power") or 0) / 1000.0
-            cap = int(rack.get("power_capacity") or 0) / 1000.0
-            hdr = (
-                f"{rack['name']}\n{rack.get('label', '')}  "
-                f"{st.get('used_u', 0)}/{u_total}U  {pwr:.1f}/{cap:.1f} kW"
-            )
-            add_label(proto, page, cx, rack_top - HEADER_H / 2, RACK_W, HEADER_H, hdr.strip(), 7)
+            rack_code = rack.get("name") or f"R{i + 1}"
+            add_caption(proto, page, cx, rack_top - HEADER_H / 2, RACK_W, HEADER_H, rack_code, 12)
 
-            add_rect(
-                proto,
-                page,
-                cx,
-                rack_base + grid_h / 2,
-                RACK_W,
-                grid_h,
-                "",
-                "#0C141C",
-                "#4A6A80",
-                6,
-            )
+            add_box(proto, page, cx, rack_base + grid_h / 2, RACK_W, grid_h, text="", font_pt=6)
 
             for d in rack.get("devices") or []:
                 u_start = int(d.get("u_start") or 1)
                 u_size = max(1, int(d.get("u_size") or 1))
-                type_key = d.get("type_key") or "server"
-                status = d.get("status") or "online"
-                fill = STATUS_FILL.get(status, "#1A2834")
-                line = TYPE_LINE.get(type_key, "#35c6ff")
-                if type_key == "blank":
-                    fill = "#1E2A34"
                 h = u_size * U_H - 0.02
                 pin_y = rack_base + (u_start - 1) * U_H + h / 2
                 w = RACK_W - RACK_PAD * 2
-                name = d.get("name") or ""
-                label = name
-                if u_size >= 2:
-                    label += f"\n{type_key}"
-                    if d.get("hostname"):
-                        label += f"\n{d['hostname']}"
-                label += f"\nU{u_start}" + (f"-{u_start + u_size - 1}" if u_size > 1 else "")
-                font = 6 if u_size <= 1 else (7 if u_size <= 2 else 8)
-                add_rect(proto, page, cx, pin_y, w, h, label, fill, line, font)
+                name = (d.get("name") or "").strip()
+                font = 5 if u_size <= 1 else (6 if u_size <= 2 else 7)
+                add_box(proto, page, cx, pin_y, w, h, name, font)
 
         root = page.xml.getroot()
         for el in list(root.findall(f"{namespace}Connects")):
@@ -271,7 +217,11 @@ def verify(path: str) -> None:
     page = vf.pages[0]
     print(f"Page size: {page.width:.2f} x {page.height:.2f} in")
     frames = [s for s in page.child_shapes if s.height and s.height > 5]
-    devices = [s for s in page.child_shapes if s.text and "U" in s.text and s.height < 2]
+    devices = [
+        s
+        for s in page.child_shapes
+        if s.text and s.height and s.height < 2 and s.height > 0.05
+    ]
     print(f"Shapes: {len(page.child_shapes)} (frames={len(frames)}, devices~={len(devices)})")
     for s in frames[:3]:
         print(f"  frame Pin=({s.x:.2f},{s.y:.2f}) Size=({s.width:.2f}x{s.height:.2f})")
