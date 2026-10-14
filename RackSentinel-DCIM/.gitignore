@@ -1,3 +1,6 @@
 agents/host/dist/
 agents/snmp/dist/
 agents/notifier/dist/
+node_modules/
+package-lock.json
+storage/.screenshot-device-id
