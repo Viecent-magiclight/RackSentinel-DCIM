@@ -451,6 +451,39 @@ body.bare{--nav-h:62px;overflow:hidden}
 /* ---------------- 设置页 ---------------- */
 .setwrap{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:14px;
   align-items:start;padding:16px;max-width:1080px;margin:0 auto}
+
+/* ---------------- 监控 / 告警（全宽流体布局） ---------------- */
+.page-wrap{
+  width:100%;max-width:none;margin:0;
+  padding:20px clamp(16px,2.5vw,32px) 28px;
+  box-sizing:border-box;
+}
+.monitor-grid{
+  display:grid;
+  grid-template-columns:minmax(260px,1fr) minmax(340px,1.35fr) minmax(280px,1fr);
+  gap:clamp(18px,2vw,26px);
+  align-items:start;
+}
+.monitor-grid .card{padding:16px 18px 20px}
+.monitor-grid .grid{font-size:12px}
+.monitor-grid .grid th,.monitor-grid .grid td{padding:8px 10px}
+.monitor-col-agents{min-width:0}
+.monitor-col-agents .grid{display:block;overflow-x:auto}
+.page-wrap--stack{display:flex;flex-direction:column;gap:clamp(16px,2vw,22px)}
+.monitor-detail-pair{
+  display:grid;grid-template-columns:1fr 1fr;gap:clamp(16px,2vw,22px);align-items:stretch;
+}
+.monitor-detail-pair .card{height:100%;min-height:200px}
+.page-wrap .card.table-card{padding:12px 16px 16px}
+.page-wrap .card.table-card .grid{width:100%}
+@media (max-width:1400px){
+  .monitor-grid{grid-template-columns:1fr 1fr}
+  .monitor-col-agents{grid-column:1/-1}
+}
+@media (max-width:880px){
+  .monitor-grid{grid-template-columns:1fr}
+  .monitor-detail-pair{grid-template-columns:1fr}
+}
 .setform .fld{margin-bottom:14px}
 .setform .fld em{display:block;font-style:normal;margin-top:4px}
 .setform input{height:34px}

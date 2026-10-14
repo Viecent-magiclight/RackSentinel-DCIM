@@ -3,8 +3,9 @@ $PAGE  = 'monitor';
 $TITLE = '监控与通知';
 require __DIR__ . '/partials/head.php';
 ?>
-<div class="setwrap" style="max-width:1100px">
-  <div class="card">
+<div class="page-wrap">
+  <div class="monitor-grid">
+  <div class="card monitor-col-ingest">
     <div class="card-t"><h3>采集与数据模式</h3><span class="en">INGEST</span></div>
     <p class="hint" style="margin-bottom:12px">
       采集 API 入口：<code class="mono">api/ingest.php?r=...</code>（Bearer 令牌）。
@@ -34,7 +35,7 @@ require __DIR__ . '/partials/head.php';
     </form>
   </div>
 
-  <div class="card">
+  <div class="card monitor-col-agents">
     <div class="card-t"><h3>采集代理</h3><span class="en">AGENTS</span></div>
     <div class="flex" style="margin-bottom:10px;flex-wrap:wrap;gap:8px">
       <button class="btn primary" id="btnAgentHost">+ 主机 Agent</button>
@@ -49,7 +50,7 @@ require __DIR__ . '/partials/head.php';
     </table>
   </div>
 
-  <div class="card">
+  <div class="card monitor-col-notify">
     <div class="card-t"><h3>告警通知（腾讯云）</h3><span class="en">NOTIFY</span></div>
     <p class="hint">SecretKey 请勿写入代码库；优先使用环境变量 <code>TENCENT_SECRET_ID</code> / <code>TENCENT_SECRET_KEY</code>。设置页保存的密钥字段仅作备用。</p>
     <form method="post" action="settings.php" class="setform">
@@ -86,6 +87,7 @@ require __DIR__ . '/partials/head.php';
       <thead><tr><th>姓名</th><th>语音号码</th><th>短信号码</th><th>最低级别</th><th>启用</th><th></th></tr></thead>
       <tbody id="rcptRows"></tbody>
     </table>
+  </div>
   </div>
 </div>
 <?php if (param('saved')): ?><div class="flash ok" style="position:fixed;top:60px;right:16px;z-index:80">设置已保存</div><?php endif; ?>

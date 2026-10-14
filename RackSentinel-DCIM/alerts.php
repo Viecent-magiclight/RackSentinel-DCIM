@@ -3,8 +3,8 @@ $PAGE  = 'alerts';
 $TITLE = '告警中心';
 require __DIR__ . '/partials/head.php';
 ?>
-<div class="setwrap" style="max-width:1100px">
-  <div class="card">
+<div class="page-wrap page-wrap--stack">
+  <div class="card table-card">
     <div class="card-t"><h3>活动告警</h3><span class="en">ALERTS</span></div>
     <div class="flex" style="gap:8px;margin-bottom:10px">
       <select id="fLevel" style="width:140px">
