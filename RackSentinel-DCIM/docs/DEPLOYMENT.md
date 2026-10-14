@@ -5,6 +5,7 @@
 1. 安装 PHP 8 + PDO（MySQL 或 `RACK_DB_DRIVER=sqlite`）。
 2. 访问 `install.php` 或运行迁移（页面加载时自动 `run_migrations()`）。
 3. **监控采集** (`monitor.php`)：关闭指标模拟、创建 Agent 令牌。
+4. **机柜 Visio 导出**：`export.php?r=visio&rack=<id>` 或机柜页 **导出 Visio**。服务端需 **python3**（标准库即可）。`scripts/build_rack_visio.py` 以 `lib/vsdx/rack42u-template.vsdx`（标准 42U 机柜：框架、U 刻度、标题）为母版，按机柜复制并在柜内按 U 位放置设备。输出为 Visio **2013+** `.vsdx`。Microsoft Visio 桌面版为推荐打开方式。
 
 ## 主机 Agent (`agents/host`)
 

@@ -26,6 +26,8 @@ require __DIR__ . '/partials/head.php';
         <button class="btn sm" id="btnDensity">紧凑</button>
         <button class="btn sm" id="btnExport" title="每个机柜导出为一个 Sheet">
           <svg class="ico-sm"><use href="#ico-ui-export"/></svg>导出 Excel</button>
+        <button class="btn sm" id="btnExportVisio" title="整列机柜导出为 Visio 可编辑图形">
+          <svg class="ico-sm"><use href="#ico-ui-export"/></svg>导出 Visio</button>
         <button class="btn sm primary" id="btnAdd"><svg class="ico-sm"><use href="#ico-ui-plus"/></svg>新增设备</button>
       </div>
     </div>

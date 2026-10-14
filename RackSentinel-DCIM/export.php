@@ -3,12 +3,14 @@
  * xlsx 导出：
  *   export.php?r=devices  设备清单（单表，按机柜排序，全表边框）
  *   export.php?r=racks    机柜图（首页机房概览，之后每个机柜一个 Sheet）
+ *   export.php?r=visio&rack=ID  整列机柜 Visio（与「整列对比」同列）
  */
 require __DIR__ . '/lib/db.php';
 require __DIR__ . '/lib/catalog.php';
 require __DIR__ . '/lib/helpers.php';
 require __DIR__ . '/lib/sheetmap.php';
 require __DIR__ . '/lib/xlsx.php';
+require __DIR__ . '/lib/vsdx.php';
 require __DIR__ . '/lib/auth.php';
 
 if (!db_installed()) {
@@ -24,6 +26,15 @@ $stamp = date('Ymd-Hi');
 try {
     if ($what === 'racks') {
         xlsx_download("机柜布局-$stamp.xlsx", build_rack_sheets(), "racks-$stamp.xlsx");
+    }
+    if ($what === 'visio') {
+        $rackId = int_param('rack');
+        if ($rackId <= 0) {
+            throw new InvalidArgumentException('请指定 rack 参数（当前机柜 ID）');
+        }
+        $bundle = vsdx_racks_for_export($rackId);
+        $name   = ($bundle['anchor']['name'] ?? 'rack') . '-row-' . $stamp . '.vsdx';
+        vsdx_download($name, $rackId);
     }
     xlsx_download("设备清单-$stamp.xlsx", [build_device_sheet()], "devices-$stamp.xlsx");
 } catch (Throwable $e) {

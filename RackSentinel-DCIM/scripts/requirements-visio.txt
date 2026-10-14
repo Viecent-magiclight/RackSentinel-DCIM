@@ -1,0 +1,2 @@
+# Visio export uses scripts/build_rack_visio.py (Python 3 standard library only).
+# No third-party package is required.
