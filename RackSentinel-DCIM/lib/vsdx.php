@@ -1,7 +1,8 @@
 <?php
 /**
- * Visio (.vsdx) export — delegates to scripts/build_rack_visio.py (python vsdx + template.vsdx).
- * PHP web app stays Composer-free; requires python3 + `pip install vsdx` on the server.
+ * Visio (.vsdx) export — delegates to scripts/build_rack_visio.py.
+ * PHP stays Composer-free; the server needs python3 (stdlib only).
+ * The drawing clones lib/vsdx/rack42u-template.vsdx (owner 42U rack).
  */
 
 function vsdx_racks_for_export(int $rackId): array
@@ -105,7 +106,7 @@ function vsdx_build_row_file(int $rackId): string
 
     if ($code !== 0 || !is_file($outPath)) {
         throw new RuntimeException(
-            'Visio export failed (install: pip install vsdx). ' . implode("\n", $lines)
+            'Visio export failed. ' . implode("\n", $lines)
         );
     }
 

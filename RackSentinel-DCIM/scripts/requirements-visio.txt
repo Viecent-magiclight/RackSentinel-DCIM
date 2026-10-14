@@ -1,2 +1,2 @@
-# For Visio rack export (scripts/build_rack_visio.py)
-vsdx>=0.5.19
+# Visio export uses scripts/build_rack_visio.py (Python 3 standard library only).
+# No third-party package is required.
