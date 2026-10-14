@@ -502,6 +502,10 @@ async function openRack(id, keepSel = false) {
 
 $('#btnAdd').onclick = () => openForm(null, 0);
 $('#btnExport').onclick = () => { location.href = 'export.php?r=racks'; };
+$('#btnExportVisio').onclick = () => {
+  if (!S.curId) { toast('请先选择机柜', 'err'); return; }
+  location.href = `export.php?r=visio&rack=${S.curId}`;
+};
 $('#btnDensity').onclick = e => {
   S.compact = !S.compact;
   e.currentTarget.classList.toggle('on', S.compact);
