@@ -67,7 +67,31 @@ Web 端采用 **纯 PHP + PDO + 原生 JavaScript**（无 Composer、无前端�
   <img src="Preview/Asset%20Management.png" alt="RackSentinel 资产管理界面" width="85%" />
 </p>
 
-> 图片存放于仓库根目录 [`Preview/`](./Preview)。
+### 系统设置 · Settings
+
+<p align="center">
+  <img src="Preview/Settings.png" alt="RackSentinel 系统设置" width="85%" />
+</p>
+
+### 监控采集 · Monitoring ingest（v0.2）
+
+<p align="center">
+  <img src="Preview/Monitor%20Ingest.png" alt="RackSentinel 监控采集页" width="85%" />
+</p>
+
+### 告警中心 · Alerts
+
+<p align="center">
+  <img src="Preview/Alerts%20Center.png" alt="RackSentinel 告警中心" width="85%" />
+</p>
+
+### 设备监控详情 · Device monitor
+
+<p align="center">
+  <img src="Preview/Device%20Monitor.png" alt="RackSentinel 设备 SNMP 监控详情" width="85%" />
+</p>
+
+> 截图均为 **v0.2** 当前 UI（1920×1080），存放于仓库根目录 [`Preview/`](./Preview)。维护者可运行 `install/cli.php` 后执行 `scripts/prep-screenshot-demo.php` 与 `node scripts/capture-previews.mjs` 重新生成。
 
 ## ✨ 功能特性
 

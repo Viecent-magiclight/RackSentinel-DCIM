@@ -5,6 +5,7 @@
 require __DIR__ . '/../lib/db.php';
 require __DIR__ . '/../lib/catalog.php';
 require __DIR__ . '/../lib/helpers.php';
+require __DIR__ . '/../lib/migrate.php';
 require __DIR__ . '/../lib/auth.php';
 require __DIR__ . '/../lib/ingest.php';
 require __DIR__ . '/../lib/ingest_snmp.php';

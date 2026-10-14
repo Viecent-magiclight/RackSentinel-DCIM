@@ -18,7 +18,8 @@ function ingest_save_snmp_meta(int $deviceId, array $sys, ?string $profileId = n
         'last_poll_at'  => now_str(),
     ];
     if ($row) {
-        update_row('device_snmp_meta', $deviceId, $data);
+        $sets = implode(', ', array_map(fn ($k) => "$k = ?", array_keys($data)));
+        q("UPDATE device_snmp_meta SET $sets WHERE device_id = ?", [...array_values($data), $deviceId]);
     } else {
         $data['device_id'] = $deviceId;
         insert_row('device_snmp_meta', $data);

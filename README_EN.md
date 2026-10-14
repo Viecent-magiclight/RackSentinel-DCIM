@@ -67,7 +67,31 @@ Application code lives under **`RackSentinel-DCIM/`** (paths below are relative 
   <img src="Preview/Asset%20Management.png" alt="RackSentinel asset management" width="85%" />
 </p>
 
-> Images are in repo-root [`Preview/`](./Preview).
+### Settings
+
+<p align="center">
+  <img src="Preview/Settings.png" alt="RackSentinel settings" width="85%" />
+</p>
+
+### Monitoring ingest (v0.2)
+
+<p align="center">
+  <img src="Preview/Monitor%20Ingest.png" alt="RackSentinel monitoring ingest" width="85%" />
+</p>
+
+### Alerts center
+
+<p align="center">
+  <img src="Preview/Alerts%20Center.png" alt="RackSentinel alerts center" width="85%" />
+</p>
+
+### Device monitor detail
+
+<p align="center">
+  <img src="Preview/Device%20Monitor.png" alt="RackSentinel device SNMP monitor" width="85%" />
+</p>
+
+> All screenshots reflect the **v0.2** UI at 1920×1080 in repo-root [`Preview/`](./Preview). Regenerate after `install/cli.php` with `scripts/prep-screenshot-demo.php` and `node scripts/capture-previews.mjs`.
 
 ## ✨ Features
 
