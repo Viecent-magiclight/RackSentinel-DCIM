@@ -1,5 +1,6 @@
 {
   "server_url": "http://127.0.0.1:8080/RackSentinel-DCIM/api/ingest.php",
   "token": "PASTE_AGENT_TOKEN_HERE",
-  "interval_sec": 60
+  "interval_sec": 60,
+  "buffer_file": "buffer.json"
 }

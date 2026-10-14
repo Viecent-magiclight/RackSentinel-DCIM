@@ -1,0 +1,15 @@
+{
+  "server_url": "https://your-dcim.example.com/RackSentinel-DCIM/api/ingest.php",
+  "token": "PASTE_NOTIFIER_TOKEN",
+  "interval_sec": 30,
+  "secret_id": "",
+  "secret_key": "",
+  "sms_sdk_app_id": "",
+  "sms_sign": "",
+  "sms_template_id": "",
+  "vms_sdk_app_id": "",
+  "vms_template_id": "",
+  "dedupe_sec": 600,
+  "rate_per_hour": 30,
+  "voice_mode": "tts"
+}
